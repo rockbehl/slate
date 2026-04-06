@@ -33,7 +33,7 @@ const Interpreter = (() => {
     const DB_NAME      = 'slate_interpreter';
     const DB_VERSION   = 1;
     const STORE_NAME   = 'results';
-    const CACHE_VERSION = 2;   // bump when parse logic changes to auto-invalidate stale results
+    const CACHE_VERSION = 3;   // bump when parse logic changes to auto-invalidate stale results
 
     /* ─────────────────────────────────────────
        X-POSITION THRESHOLDS (PDF points, 72pt = 1")
@@ -53,7 +53,16 @@ const Interpreter = (() => {
         TRANSITION_MIN:   330,
     };
 
-    const SCENE_RE      = /^(INT\.|EXT\.|INT\.\/EXT\.|EXT\.\/INT\.|I\/E\.)\s+/i;
+    // Scene heading — handles:
+    //   Standard:   INT. COFFEE SHOP - DAY
+    //   No period:  INT COFFEE SHOP - DAY  (common in older/exported scripts)
+    //   Slash:      INT./EXT. MOVING CAR
+    //   Numbered:   1. INT. COFFEE SHOP  or  42 EXT. ALLEY (stripped below in _classify)
+    const SCENE_RE = /^(INT\.?|EXT\.?|INT\.?\/EXT\.?|EXT\.?\/INT\.?|I\/E\.?)\s+/i;
+
+    // Prefix that some PDFs prepend to scene headings — e.g. "1." "A12." "42 "
+    const SCENE_NUM_RE = /^[A-Z]?\d+[A-Z]?[.\s]+/;
+
     const TRANSITION_RE = /^(FADE\s+IN[:.!]?|FADE\s+OUT[:.!]?|CUT\s+TO:|DISSOLVE\s+TO:|SMASH\s+CUT|MATCH\s+CUT|TITLE\s+CARD:|SUPER\s*:|BACK\s+TO:|CONTINUOUS[.:]?)/i;
     const VOICE_RE      = /\s*\((V\.O\.|O\.S\.|O\.C\.|CONT'D|CONT|MOS|PRE-LAP)\)\s*$/i;
 
@@ -146,7 +155,15 @@ const Interpreter = (() => {
         const t          = text.trim();
         const isAllCaps  = t.length > 1 && t === t.toUpperCase() && /[A-Z]/.test(t);
 
-        if (SCENE_RE.test(t))                                              return 'scene';
+        // Scene check — also try stripping a leading scene number (e.g. "42. INT. HALLWAY")
+        const tNoNum = t.replace(SCENE_NUM_RE, '');
+        if (SCENE_RE.test(t) || SCENE_RE.test(tNoNum))                     return 'scene';
+
+        // Near-miss debug: all-caps lines starting with INT/EXT that didn't match
+        if (/^(INT|EXT)\b/i.test(t) && !SCENE_RE.test(t)) {
+            console.warn(`SLATE Interpreter: possible scene heading not matched — "${t}" (x=${Math.round(x)})`);
+        }
+
         if (TRANSITION_RE.test(t))                                         return 'transition';
         if (isAllCaps && x >= X.CHAR_MIN && x <= X.CHAR_MAX && t.length <= 50 && !CHAR_BLACKLIST.has(t)) return 'character';
         if (t.startsWith('(') && x >= X.PAREN_MIN && x <= X.PAREN_MAX)    return 'parenthetical';
