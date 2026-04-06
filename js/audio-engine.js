@@ -158,23 +158,30 @@ const AudioEngine = (() => {
     ───────────────────────────────────────── */
     function _startPoll() {
         if (_poll) return;
+        // 250ms interval — only for cue detection (page-level timing, doesn't need sub-second precision)
         _poll = setInterval(_tick, POLL_MS);
+        // rAF loop — drives the progress bar and playhead at 60fps
+        _rafLoop();
     }
 
     function _stopPoll() {
         if (_poll) { clearInterval(_poll); _poll = null; }
     }
 
+    // Cue detection only — fires every 250ms
     function _tick() {
         if (!_current || !_current.playing()) return;
+        _checkCues(_current.seek() || 0);
+    }
 
+    // Progress render only — fires every animation frame (~60fps)
+    function _rafLoop() {
+        if (!_current || !_current.playing()) return;
         const seek = _current.seek() || 0;
         const dur  = _current.duration() || 1;
-
         STATE.progress = (seek / dur) * 100;
         if (typeof renderProgress === 'function') renderProgress();
-
-        _checkCues(seek);
+        requestAnimationFrame(_rafLoop);
     }
 
     function _checkCues(seek) {

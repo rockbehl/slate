@@ -76,6 +76,9 @@
     --ui-hover:   1;      /* opacity on hover */
     --ui-active:  1;      /* active/selected state */
 
+    /* ── Component-specific tokens ── */
+    --vol-fill:    rgba(255,255,255,.2);   /* volume slider fill */
+
     /* ── Shadows ── */
     --shadow-page:    0 32px 80px rgba(0,0,0,.75), 0 0 0 1px rgba(0,0,0,.2);
     --shadow-page-sm: 0 12px 48px rgba(0,0,0,.7);

@@ -309,15 +309,16 @@
     gap: 8px;
 }
 
-.cm-save-btn {
-    border-color: rgba(201,168,76,.3) !important;
-    color: rgba(201,168,76,.7) !important;
+/* Compound selector beats .ghost-btn specificity without !important */
+.ghost-btn.cm-save-btn {
+    border-color: rgba(201,168,76,.3);
+    color: rgba(201,168,76,.7);
 }
 
-.cm-save-btn:hover {
-    background: var(--accent-dim) !important;
-    border-color: rgba(201,168,76,.5) !important;
-    color: var(--accent) !important;
+.ghost-btn.cm-save-btn:hover {
+    background: var(--accent-dim);
+    border-color: rgba(201,168,76,.5);
+    color: var(--accent);
 }
 
 /* ─────────────────────────────────────────────────

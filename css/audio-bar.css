@@ -112,7 +112,7 @@
 .vol-fill {
     height: 100%;
     width: 0%;   /* set by initVolumeSlider() in app.js */
-    background: rgba(255,255,255,.2);
+    background: var(--vol-fill);
     border-radius: 2px;
 }
 
