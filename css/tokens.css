@@ -4,6 +4,11 @@
    "Just enough to notice, just enough to blend in."
 ───────────────────────────────────────────────── */
 
+/* Layer declaration order = cascade priority (last wins) */
+@layer tokens, base, components, audio-bar, screen, compose;
+
+@layer tokens {
+
 :root {
 
     /* ── Colour ── */
@@ -84,3 +89,5 @@
     --shadow-page-sm: 0 12px 48px rgba(0,0,0,.7);
     --shadow-float:   0 8px 40px rgba(0,0,0,.55), 0 1px 0 rgba(255,255,255,.04) inset;
 }
+
+} /* end @layer tokens */

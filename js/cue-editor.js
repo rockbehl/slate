@@ -71,11 +71,8 @@ const CueEditor = (() => {
             // Build cells safely — no innerHTML with user data
             tr.appendChild(_cell(`<span class="c-dot" style="background:${_esc(scene?.color || '#555')};"></span>${cue.page}`));
             tr.appendChild(_cell(_esc(cue.scene || '—')));
-            tr.appendChild(_cell(cue.track
-                ? _esc(_trackLabel(cue.track))
-                : '<span class="tbd">— not set</span>'
-            ));
-            tr.appendChild(_monoCell(_formatTime(cue.at)));
+            tr.appendChild(_trackCell(cue, idx));
+            tr.appendChild(_atCell(cue, idx));
 
             const noteCell = _noteCell(cue, idx);
             tr.appendChild(noteCell);
@@ -214,6 +211,105 @@ const CueEditor = (() => {
     }
 
     /* ─────────────────────────────────────────
+       INLINE TRACK ASSIGNMENT
+    ───────────────────────────────────────── */
+    function _trackCell(cue, idx) {
+        const td = document.createElement('td');
+        td.className = 'track-td';
+        td.title     = 'Click to change track';
+        td.innerHTML = cue.track
+            ? _esc(_trackLabel(cue.track))
+            : '<span class="tbd">— not set</span>';
+        td.addEventListener('click', e => {
+            if (e.target.tagName === 'SELECT') return;
+            _editTrack(td, idx);
+        });
+        return td;
+    }
+
+    function _editTrack(cell, idx) {
+        const current = STATE.cues[idx].track || '';
+        cell.innerHTML = '';
+
+        const select = document.createElement('select');
+        select.className = 'track-select';
+
+        const emptyOpt = document.createElement('option');
+        emptyOpt.value       = '';
+        emptyOpt.textContent = '— silence —';
+        select.appendChild(emptyOpt);
+
+        (STATE.tracks || []).forEach(t => {
+            const opt = document.createElement('option');
+            opt.value       = t.id || t.file || '';
+            opt.textContent = t.title || t.id || t.file || '';
+            select.appendChild(opt);
+        });
+
+        // If tracks list is empty but a value exists, add it so it shows
+        if (!(STATE.tracks || []).length && current) {
+            const opt = document.createElement('option');
+            opt.value = current; opt.textContent = current;
+            select.appendChild(opt);
+        }
+
+        select.value = current;
+
+        const commit = () => {
+            STATE.cues[idx].track = select.value;
+            save();
+            render();
+            if (typeof Waveform !== 'undefined') Waveform.renderCueMarkers(STATE.cues, STATE.scenes);
+        };
+
+        select.addEventListener('change', commit);
+        select.addEventListener('blur',   () => { if (cell.contains(select)) render(); });
+        cell.appendChild(select);
+        select.focus();
+    }
+
+    /* ─────────────────────────────────────────
+       INLINE TIMESTAMP (CUE IN) EDITING
+    ───────────────────────────────────────── */
+    function _atCell(cue, idx) {
+        const td = document.createElement('td');
+        td.className = 'mono at-td';
+        td.title     = 'Click to set cue-in time (seconds)';
+        td.textContent = _formatTime(cue.at);
+        td.addEventListener('click', () => _editAt(td, idx));
+        return td;
+    }
+
+    function _editAt(cell, idx) {
+        const current = STATE.cues[idx].at ?? 0;
+        cell.textContent = '';
+
+        const input = document.createElement('input');
+        input.type      = 'number';
+        input.className = 'at-input';
+        input.value     = current ?? 0;
+        input.min       = 0;
+        input.step      = 1;
+        input.setAttribute('aria-label', 'Cue start time in seconds');
+
+        input.addEventListener('blur', () => {
+            const val = parseFloat(input.value);
+            STATE.cues[idx].at = isNaN(val) ? null : val;
+            save();
+            render();
+            if (typeof Waveform !== 'undefined') Waveform.renderCueMarkers(STATE.cues, STATE.scenes);
+        });
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter')  { e.preventDefault(); input.blur(); }
+            if (e.key === 'Escape') { input.value = current ?? 0; input.blur(); }
+        });
+
+        cell.appendChild(input);
+        input.focus();
+        input.select();
+    }
+
+    /* ─────────────────────────────────────────
        DELETE CUE
     ───────────────────────────────────────── */
     function _deleteCue(idx) {
@@ -228,6 +324,45 @@ const CueEditor = (() => {
        INTERPRETER READY HOOK
        Called by interpreter.js when analysis completes.
     ───────────────────────────────────────── */
+    function toggleInterpPanel() {
+        const panel  = document.getElementById('interp-panel');
+        const toggle = document.getElementById('interp-toggle');
+        if (!panel) return;
+        const isHidden = panel.hidden;
+        panel.hidden = !isHidden;
+        if (toggle) toggle.classList.toggle('active', !isHidden === false ? false : true);
+    }
+
+    function _populateInterpPanel(data) {
+        const panel     = document.getElementById('interp-panel');
+        const sceneEl   = document.getElementById('interp-scene-count');
+        const charCountEl = document.getElementById('interp-char-count');
+        const charsEl   = document.getElementById('interp-chars');
+        const toggle    = document.getElementById('interp-toggle');
+        if (!panel || !sceneEl) return;
+
+        sceneEl.textContent   = `${(data.scenes||[]).length} scenes`;
+        charCountEl.textContent = `${(data.characters||[]).length} characters`;
+
+        if (charsEl) {
+            charsEl.innerHTML = '';
+            (data.characters || []).slice(0, 30).forEach(name => {
+                const chip = document.createElement('span');
+                chip.className   = 'interp-chip';
+                chip.textContent = name;
+                charsEl.appendChild(chip);
+            });
+            if ((data.characters || []).length > 30) {
+                const more = document.createElement('span');
+                more.className   = 'interp-chip tbd';
+                more.textContent = `+${data.characters.length - 30} more`;
+                charsEl.appendChild(more);
+            }
+        }
+
+        if (toggle) toggle.style.display = '';
+    }
+
     function onInterpreterReady(data) {
         if (!data || data.error === 'no-text') {
             _setBtnState('error', 'No text');
@@ -238,6 +373,7 @@ const CueEditor = (() => {
         const count = (data.suggestedCues || []).length;
         console.log(`SLATE CueEditor: interpreter ready — ${count} cues, ${(data.scenes||[]).length} scenes, ${(data.characters||[]).length} chars`);
         _setBtnState('ready', `Suggest (${count})`);
+        _populateInterpPanel(data);
 
         if (_pendingSuggest) {
             _pendingSuggest = false;
@@ -370,6 +506,6 @@ const CueEditor = (() => {
         : null;
 
     /* Public API */
-    return { init, render, search, setActive, save, exportJSON, suggestCues, onInterpreterReady, _testAPI };
+    return { init, render, search, setActive, save, exportJSON, suggestCues, onInterpreterReady, toggleInterpPanel, _testAPI };
 
 })();

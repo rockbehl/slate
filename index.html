@@ -161,7 +161,19 @@
             <section class="wave-zone" aria-label="Waveform timeline">
                 <div class="z-hdr">
                     <span class="panel-lbl">Waveform · Timeline</span>
-                    <span class="z-track" id="waveform-track-label" aria-live="polite">—</span>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <button class="ghost-btn interp-toggle" id="interp-toggle"
+                                onclick="CueEditor.toggleInterpPanel()"
+                                aria-label="Show interpreter results"
+                                style="display:none;">
+                            <svg width="9" height="9" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                                <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.2"/>
+                                <line x1="7" y1="4.5" x2="7" y2="7.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                                <circle cx="7" cy="9.5" r=".7" fill="currentColor"/>
+                            </svg>
+                        </button>
+                        <span class="z-track" id="waveform-track-label" aria-live="polite">—</span>
+                    </div>
                 </div>
                 <div class="wave-box" id="wave-box"
                      role="img" aria-label="Audio waveform">
@@ -170,6 +182,16 @@
                     <div class="playhead" id="ph"        aria-hidden="true"></div>
                 </div>
             </section>
+
+            <!-- Interpreter panel — hidden until interpreter fires -->
+            <div class="interp-panel" id="interp-panel" aria-live="polite" hidden>
+                <div class="interp-body">
+                    <span class="interp-stat" id="interp-scene-count"></span>
+                    <span class="interp-sep">·</span>
+                    <span class="interp-stat" id="interp-char-count"></span>
+                    <div class="interp-chars" id="interp-chars" aria-label="Characters"></div>
+                </div>
+            </div>
 
             <!-- Cue table zone -->
             <section class="cue-zone" aria-label="Cues and notes">

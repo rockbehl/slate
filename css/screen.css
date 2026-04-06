@@ -3,6 +3,8 @@
    Full-focus, minimal, scrollable screenplay
 ───────────────────────────────────────────────── */
 
+@layer screen {
+
 #screen {
     position: absolute;
     inset: 0;
@@ -90,3 +92,5 @@ body.fullscreen .mode-float:hover {
 .nb-fs-exit               { display: none; }
 body.fullscreen .nb-fs-enter { display: none; }
 body.fullscreen .nb-fs-exit  { display: flex; align-items: center; }
+
+} /* end @layer screen */

@@ -3,6 +3,8 @@
    Reset, body, typography, screenplay page
 ───────────────────────────────────────────────── */
 
+@layer base {
+
 *, *::before, *::after {
     margin: 0;
     padding: 0;
@@ -132,3 +134,5 @@ button {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .state-error { color: rgba(255,80,80,.4); }
+
+} /* end @layer base */

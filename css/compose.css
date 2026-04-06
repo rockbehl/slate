@@ -4,6 +4,8 @@
    Draggable divider, no heavy surfaces
 ───────────────────────────────────────────────── */
 
+@layer compose {
+
 #compose {
     position: absolute;
     inset: 0;
@@ -209,7 +211,27 @@
     opacity: .08;
     pointer-events: none;
     z-index: 0;
+    transition: opacity var(--t-base);
 }
+
+.s-band:hover { opacity: .18; pointer-events: auto; }
+
+.s-band-lbl {
+    position: absolute;
+    bottom: 5px;
+    left: 6px;
+    font-family: var(--font-mono);
+    font-size: 7px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #fff;
+    opacity: 0;
+    transition: opacity var(--t-base);
+    white-space: nowrap;
+    user-select: none;
+}
+
+.s-band:hover .s-band-lbl { opacity: .7; }
 
 /* Page marker pin row */
 .pin-row {
@@ -391,6 +413,64 @@
     max-width: 180px;
 }
 
+/* ─────────────────────────────────────────────────
+   INTERPRETER PANEL — scene + character summary
+   Appears between waveform and cue table after parse
+───────────────────────────────────────────────── */
+
+.interp-panel {
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 16px 10px;
+    flex-shrink: 0;
+    animation: interp-in var(--t-base) ease;
+}
+
+@keyframes interp-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.interp-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+}
+
+.interp-stat {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    color: var(--text-4);
+    letter-spacing: .06em;
+}
+
+.interp-sep {
+    font-size: 8px;
+    color: var(--text-4);
+    opacity: .4;
+}
+
+.interp-chars {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.interp-chip {
+    font-family: var(--font-mono);
+    font-size: 7.5px;
+    letter-spacing: .04em;
+    color: var(--text-3);
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    padding: 1px 7px;
+    white-space: nowrap;
+}
+
 /* ── Cue table zone ── */
 .cue-zone {
     flex: 1;
@@ -546,6 +626,43 @@
     cursor: default !important;
 }
 
+/* Inline track select */
+.track-td { cursor: pointer; }
+
+.track-select {
+    background: var(--bg);
+    border: none;
+    border-bottom: 1px solid rgba(201,168,76,.3);
+    color: var(--text-2);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    outline: none;
+    width: 100%;
+    padding: 1px 0;
+    cursor: pointer;
+}
+
+.track-select option { background: #111; }
+
+/* Inline cue-in (timestamp) input */
+.at-td { cursor: pointer; }
+
+.at-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(201,168,76,.3);
+    color: var(--text-2);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    width: 52px;
+    outline: none;
+    padding: 0;
+    -moz-appearance: textfield;
+}
+
+.at-input::-webkit-inner-spin-button,
+.at-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
 /* Delete column — hidden until row hovered */
 .del-td {
     width: 16px;
@@ -566,3 +683,5 @@
     transition: color var(--t-base);
 }
 .cm-del:hover { color: rgba(255,80,80,.85); }
+
+} /* end @layer compose */

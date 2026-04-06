@@ -137,6 +137,14 @@ const Waveform = (() => {
             band.style.left       = left + '%';
             band.style.width      = width + '%';
             band.style.background = scene.color;
+
+            if (scene.label) {
+                const lbl = document.createElement('span');
+                lbl.className   = 's-band-lbl';
+                lbl.textContent = scene.label;
+                band.appendChild(lbl);
+            }
+
             box.appendChild(band);
         });
     }

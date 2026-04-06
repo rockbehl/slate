@@ -3,6 +3,8 @@
    Pill shape, centered, frosted glass, always visible
 ───────────────────────────────────────────────── */
 
+@layer audio-bar {
+
 .float-bar {
     position: fixed;
     bottom: var(--bar-bottom);
@@ -130,3 +132,5 @@
     letter-spacing: .06em;
     flex-shrink: 0;
 }
+
+} /* end @layer audio-bar */

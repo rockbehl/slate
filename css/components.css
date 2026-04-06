@@ -3,6 +3,8 @@
    Buttons, nav, badges, mode toggle, now-playing whisper
 ───────────────────────────────────────────────── */
 
+@layer components {
+
 /* ─────────────────────────────────────────────────
    MODE SWITCHER — floats top-right, almost invisible
 ───────────────────────────────────────────────── */
@@ -452,3 +454,5 @@
     background: rgba(255,60,60,.05);
     border-radius: 2px;
 }
+
+} /* end @layer components */
