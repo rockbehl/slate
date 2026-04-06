@@ -274,7 +274,10 @@ const Interpreter = (() => {
     }
 
     /* ─────────────────────────────────────────
-       ANALYZE — main entry point
+       ANALYZE — spawns interpreter-worker.js
+       The worker does all extraction + parsing off
+       the main thread. This function only handles the
+       cache fast-path and wires up the worker result.
     ───────────────────────────────────────── */
     async function analyze(url, pdfDoc) {
         if (!pdfDoc) return null;
@@ -282,97 +285,98 @@ const Interpreter = (() => {
         const numPages = pdfDoc.numPages;
         const key      = _cacheKey(url, numPages);
 
-        // ── Cache hit — instant return (only if version matches) ──
+        // ── Cache hit — resolve instantly on main thread ──
         const cached = await _cacheGet(key);
         if (cached && cached._v === CACHE_VERSION) {
             console.log(`SLATE Interpreter: cache hit — "${key}"`);
             if (typeof STATE !== 'undefined') STATE.interpreterData = cached;
-            if (typeof CueEditor !== 'undefined' && typeof CueEditor.onInterpreterReady === 'function') {
-                CueEditor.onInterpreterReady(cached);
-            }
+            if (typeof CueEditor !== 'undefined') CueEditor.onInterpreterReady(cached);
             return cached;
         }
         if (cached) {
             console.log(`SLATE Interpreter: stale cache (v${cached._v ?? 0} → v${CACHE_VERSION}), re-parsing…`);
         }
 
-        console.log(`SLATE Interpreter: parsing ${numPages} pages…`);
+        // ── Worker not available (e.g. file:// protocol) — fall back to main thread ──
+        if (typeof Worker === 'undefined') {
+            return _analyzeFallback(url, pdfDoc, numPages, key);
+        }
 
-        // ── Scanned PDF check — sample pages 1-3 ──
-        // Threshold is 5 (not 10) because page 1 is often a sparse title page
+        console.log(`SLATE Interpreter: spawning worker for ${numPages} pages…`);
+
+        return new Promise((resolve, reject) => {
+            const worker = new Worker('js/interpreter-worker.js');
+
+            worker.addEventListener('message', ({ data }) => {
+                if (data.type === 'progress') return; // future: progress bar
+
+                if (data.type === 'result') {
+                    const result = data.result;
+                    if (typeof STATE !== 'undefined') STATE.interpreterData = result;
+                    if (typeof CueEditor !== 'undefined') CueEditor.onInterpreterReady(result);
+                    if (!result.error && result.scenes.length === 0) {
+                        console.warn('SLATE Interpreter: 0 scenes found — run Interpreter.diagnoseRaw(1) in console');
+                    }
+                    worker.terminate();
+                    resolve(result);
+                }
+
+                if (data.type === 'error') {
+                    console.error('SLATE Interpreter worker error:', data.message);
+                    worker.terminate();
+                    reject(new Error(data.message));
+                }
+            });
+
+            worker.addEventListener('error', e => {
+                console.error('SLATE Interpreter worker crashed:', e);
+                worker.terminate();
+                reject(e);
+            });
+
+            worker.postMessage({ url, numPages });
+        });
+    }
+
+    // Fallback: run on main thread (file:// or Worker unavailable)
+    async function _analyzeFallback(url, pdfDoc, numPages, key) {
+        console.log(`SLATE Interpreter: running on main thread (Worker unavailable) — ${numPages} pages…`);
+
         const samplePages = await Promise.all(
             [1, Math.min(2, numPages), Math.min(3, numPages)]
-                .filter((p, i, a) => a.indexOf(p) === i)  // dedupe for short docs
+                .filter((p, i, a) => a.indexOf(p) === i)
                 .map(p => _extractPage(pdfDoc, p))
         );
         const sampleCount = samplePages.reduce((n, items) => n + items.filter(i => i.str && i.str.trim()).length, 0);
-        console.log(`SLATE Interpreter: sample text items across pages 1-3 = ${sampleCount}`);
         if (sampleCount < 5) {
             const result = {
-                _v:           CACHE_VERSION,
-                error:        'no-text',
-                source:       url.split('/').pop(),
-                parsedAt:     new Date().toISOString(),
-                totalPages:   numPages,
-                scenes:       [],
-                characters:   [],
-                transitions:  [],
-                pageMap:      {},
-                suggestedCues:[],
+                _v: CACHE_VERSION, error: 'no-text',
+                source: url.split('/').pop(), parsedAt: new Date().toISOString(),
+                totalPages: numPages, scenes: [], characters: [],
+                transitions: [], pageMap: {}, suggestedCues: [],
             };
-            console.warn('SLATE Interpreter: PDF appears to be a scanned image — no extractable text');
+            console.warn('SLATE Interpreter: PDF appears to be a scanned image');
             if (typeof STATE !== 'undefined') STATE.interpreterData = result;
             return result;
         }
 
-        // ── Extract text in batches of 8 — yields between batches ──
-        const BATCH     = 8;
-        const pageLines = [];
-
+        const BATCH = 8; const pageLines = [];
         for (let start = 1; start <= numPages; start += BATCH) {
-            const end     = Math.min(start + BATCH - 1, numPages);
-            const nums    = Array.from({ length: end - start + 1 }, (_, i) => start + i);
-
-            const batchResults = await Promise.all(
-                nums.map(async p => ({
-                    pageNum: p,
-                    lines:   _itemsToLines(await _extractPage(pdfDoc, p)),
-                }))
+            const end  = Math.min(start + BATCH - 1, numPages);
+            const nums = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+            const batch = await Promise.all(
+                nums.map(async p => ({ pageNum: p, lines: _itemsToLines(await _extractPage(pdfDoc, p)) }))
             );
-
-            pageLines.push(...batchResults);
-            await new Promise(r => setTimeout(r, 0)); // yield to browser
+            pageLines.push(...batch);
+            await new Promise(r => setTimeout(r, 0));
         }
 
-        // ── Parse ──
         const parsed = _parse(pageLines);
-        const result = {
-            _v:         CACHE_VERSION,
-            source:     url.split('/').pop(),
-            parsedAt:   new Date().toISOString(),
-            totalPages: numPages,
-            ...parsed,
-        };
-
-        // ── Cache ──
+        const result = { _v: CACHE_VERSION, source: url.split('/').pop(), parsedAt: new Date().toISOString(), totalPages: numPages, ...parsed };
         await _cacheSet(key, result);
-        if (parsed.scenes.length === 0) {
-            console.warn('SLATE Interpreter: 0 scenes found — auto-running diagnoseRaw(1) to show raw extraction:');
-            diagnoseRaw(1);
-        }
-        console.log(
-            `SLATE Interpreter: done — ${parsed.scenes.length} scenes, ` +
-            `${parsed.characters.length} characters, ` +
-            `${parsed.suggestedCues.length} suggested cues. Cached as "${key}".`
-        );
-
+        if (parsed.scenes.length === 0) { console.warn('SLATE Interpreter: 0 scenes — run diagnoseRaw(1)'); diagnoseRaw(1); }
         if (typeof STATE !== 'undefined') STATE.interpreterData = result;
-
-        // Notify CueEditor so the Suggest button can update its ready state
-        if (typeof CueEditor !== 'undefined' && typeof CueEditor.onInterpreterReady === 'function') {
-            CueEditor.onInterpreterReady(result);
-        }
-
+        if (typeof CueEditor !== 'undefined') CueEditor.onInterpreterReady(result);
         return result;
     }
 
