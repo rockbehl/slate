@@ -334,25 +334,21 @@
     font-family: var(--font-ui);
 }
 
-/* State: idle (no PDF parsed yet) — slightly dimmer */
-.suggest-btn[data-state="idle"] { opacity: .6; }
+/* State: idle — inherits parent's ambient opacity, no extra dim */
 
-/* State: ready — amber accent so it's clearly clickable */
+/* State: ready — amber accent; also lifts the parent header so it's visible without hover */
 .suggest-btn[data-state="ready"] {
-    border-color: rgba(201,168,76,.4);
-    color: rgba(201,168,76,.8);
-    opacity: 1;
+    border-color: rgba(201,168,76,.5);
+    color: rgba(201,168,76,.85);
 }
+.cz-hdr:has(.suggest-btn[data-state="ready"]) { opacity: .75; }
 
 /* State: waiting (clicked before ready) */
-.suggest-btn[data-state="waiting"] {
-    opacity: .5;
-    cursor: wait;
-}
+.suggest-btn[data-state="waiting"] { cursor: wait; }
 
 /* State: error */
 .suggest-btn[data-state="error"] {
-    opacity: .4;
+    opacity: .5;
     cursor: not-allowed;
 }
 

@@ -65,49 +65,38 @@ const Interpreter = (() => {
     ]);
 
     /* ─────────────────────────────────────────
-       INDEXEDDB
+       INDEXEDDB — single shared connection
     ───────────────────────────────────────── */
+    let _db = null;
+
     function _openDB() {
+        if (_db) return Promise.resolve(_db);
         return new Promise((resolve, reject) => {
             const req = indexedDB.open(DB_NAME, DB_VERSION);
             req.onupgradeneeded = e => e.target.result.createObjectStore(STORE_NAME);
-            req.onsuccess       = e => resolve(e.target.result);
+            req.onsuccess       = e => { _db = e.target.result; resolve(_db); };
             req.onerror         = e => reject(e.target.error);
         });
     }
 
-    async function _cacheGet(key) {
+    async function _cacheOp(mode, key, value) {
         try {
-            const db = await _openDB();
+            const db    = await _openDB();
+            const store = db.transaction(STORE_NAME, mode === 'get' ? 'readonly' : 'readwrite')
+                            .objectStore(STORE_NAME);
+            const req   = mode === 'get' ? store.get(key)
+                        : mode === 'set' ? store.put(value, key)
+                        :                  store.delete(key);
             return new Promise((resolve, reject) => {
-                const req = db.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).get(key);
-                req.onsuccess = e => resolve(e.target.result || null);
+                req.onsuccess = e => resolve(mode === 'get' ? (e.target.result || null) : undefined);
                 req.onerror   = e => reject(e.target.error);
             });
         } catch (_) { return null; }
     }
 
-    async function _cacheSet(key, value) {
-        try {
-            const db = await _openDB();
-            return new Promise((resolve, reject) => {
-                const req = db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).put(value, key);
-                req.onsuccess = () => resolve();
-                req.onerror   = e => reject(e.target.error);
-            });
-        } catch (_) { /* non-critical */ }
-    }
-
-    async function _cacheDel(key) {
-        try {
-            const db = await _openDB();
-            return new Promise((resolve, reject) => {
-                const req = db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME).delete(key);
-                req.onsuccess = () => resolve();
-                req.onerror   = e => reject(e.target.error);
-            });
-        } catch (_) {}
-    }
+    const _cacheGet = (key)        => _cacheOp('get', key);
+    const _cacheSet = (key, value) => _cacheOp('set', key, value);
+    const _cacheDel = (key)        => _cacheOp('del', key);
 
     function _cacheKey(url, numPages) {
         const filename = url.split('/').pop().split('?')[0];

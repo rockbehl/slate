@@ -18,7 +18,8 @@
 const CueEditor = (() => {
 
     const STORAGE_KEY = 'slate_cues';
-    let _pendingSuggest = false;
+    let _pendingSuggest  = false;
+    let _prevActiveIdx   = null;   // track last highlighted row to avoid full-scan
 
     /* ─────────────────────────────────────────
        INIT — call after cues + scenes loaded
@@ -37,6 +38,8 @@ const CueEditor = (() => {
             }
         }
 
+        _pendingSuggest = false;
+        _prevActiveIdx  = null;
         render();
     }
 
@@ -110,9 +113,16 @@ const CueEditor = (() => {
     }
 
     function _refreshActiveRow() {
-        document.querySelectorAll('#cue-tbody tr').forEach((tr, i) => {
-            tr.classList.toggle('active', i === STATE.currentCue);
-        });
+        // Only touch the two rows that changed — avoids a full-table scan on every 250ms tick
+        const tbody = document.getElementById('cue-tbody');
+        if (!tbody) return;
+        if (_prevActiveIdx !== null && _prevActiveIdx !== STATE.currentCue) {
+            tbody.children[_prevActiveIdx]?.classList.remove('active');
+        }
+        if (STATE.currentCue !== null) {
+            tbody.children[STATE.currentCue]?.classList.add('active');
+        }
+        _prevActiveIdx = STATE.currentCue;
     }
 
     function _scrollToActive() {
@@ -189,30 +199,19 @@ const CueEditor = (() => {
        Called by interpreter.js when analysis completes.
     ───────────────────────────────────────── */
     function onInterpreterReady(data) {
-        try {
-            const btn  = document.getElementById('suggest-btn');
-            const lbl  = btn ? btn.querySelector('.suggest-lbl') : null;
+        if (!data || data.error === 'no-text') {
+            _setBtnState('error', 'No text');
+            console.warn('SLATE CueEditor: interpreter returned no-text or null', data);
+            return;
+        }
 
-            if (!data || data.error === 'no-text') {
-                if (btn) btn.dataset.state = 'error';
-                if (lbl) lbl.textContent = 'No text';
-                console.warn('SLATE CueEditor: interpreter returned no-text or null', data);
-                return;
-            }
+        const count = (data.suggestedCues || []).length;
+        console.log(`SLATE CueEditor: interpreter ready — ${count} cues, ${(data.scenes||[]).length} scenes, ${(data.characters||[]).length} chars`);
+        _setBtnState('ready', `Suggest (${count})`);
 
-            const count = (data.suggestedCues || []).length;
-            console.log(`SLATE CueEditor: interpreter ready — ${count} suggested cues, ${(data.scenes||[]).length} scenes, ${(data.characters||[]).length} characters`);
-
-            if (btn) btn.dataset.state = 'ready';
-            if (lbl) lbl.textContent = `Suggest (${count})`;
-
-            // If user already clicked before we were ready, fire now
-            if (_pendingSuggest) {
-                _pendingSuggest = false;
-                suggestCues();
-            }
-        } catch (e) {
-            console.warn('SLATE CueEditor: onInterpreterReady error', e);
+        if (_pendingSuggest) {
+            _pendingSuggest = false;
+            suggestCues();
         }
     }
 
@@ -224,32 +223,32 @@ const CueEditor = (() => {
         console.log('SLATE CueEditor: suggestCues() called — interpreterData:', data);
 
         if (!data) {
-            // Interpreter still running — queue auto-fire when it finishes
             _pendingSuggest = true;
             _setBtnState('waiting', 'Analyzing…');
-            _notify('Analyzing screenplay — will suggest when ready');
+            if (typeof showNowPlaying === 'function') showNowPlaying('Analyzing screenplay — will suggest when ready');
             return;
         }
         if (data.error === 'no-text') {
             _setBtnState('error', 'No text');
-            _notify('PDF has no text layer — cannot suggest cues');
+            if (typeof showNowPlaying === 'function') showNowPlaying('PDF has no text layer — cannot suggest cues');
             return;
         }
 
         const suggested = data.suggestedCues || [];
         if (!suggested.length) {
-            _notify('No scenes detected in this PDF');
+            if (typeof showNowPlaying === 'function') showNowPlaying('No scenes detected in this PDF');
             return;
         }
 
         // Deep-copy so edits don't mutate interpreter data
         STATE.cues = suggested.map(c => ({ ...c }));
         STATE.currentCue = null;
+        _prevActiveIdx = null;
         save();
         render();
         _syncCountLabel();
         _setBtnState('ready', `Suggest (${suggested.length})`);
-        _notify(`${suggested.length} scene cues loaded`);
+        if (typeof showNowPlaying === 'function') showNowPlaying(`${suggested.length} scene cues loaded`);
     }
 
     function _setBtnState(state, label) {
@@ -258,11 +257,6 @@ const CueEditor = (() => {
         btn.dataset.state = state;
         const lbl = btn.querySelector('.suggest-lbl');
         if (lbl) lbl.textContent = label;
-    }
-
-    function _notify(msg) {
-        console.log('SLATE CueEditor:', msg);
-        if (typeof showNowPlaying === 'function') showNowPlaying(msg);
     }
 
     /* ─────────────────────────────────────────
@@ -338,14 +332,6 @@ const CueEditor = (() => {
     function _syncCountLabel() {
         const el = document.getElementById('cue-count-label');
         if (el) el.textContent = `${STATE.cues.length} cue${STATE.cues.length !== 1 ? 's' : ''}`;
-    }
-
-    function _flashStatus(msg) {
-        const el = document.querySelector('.cue-zone .panel-lbl');
-        if (!el) return;
-        const orig = el.textContent;
-        el.textContent = msg;
-        setTimeout(() => { el.textContent = orig; }, 2200);
     }
 
     /* Public API */
