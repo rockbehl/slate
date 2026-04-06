@@ -158,7 +158,8 @@ const Waveform = (() => {
     ───────────────────────────────────────── */
     function rebuild() {
         if (_ws) {
-            _ws.redraw();
+            // Wavesurfer v7 removed redraw() — zooming to current level forces re-render
+            try { _ws.zoom(_ws.options.minPxPerSec ?? 0); } catch (_) {}
         } else {
             buildProcedural();
         }

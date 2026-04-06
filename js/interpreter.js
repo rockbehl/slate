@@ -30,9 +30,10 @@
 
 const Interpreter = (() => {
 
-    const DB_NAME    = 'slate_interpreter';
-    const DB_VERSION = 1;
-    const STORE_NAME = 'results';
+    const DB_NAME      = 'slate_interpreter';
+    const DB_VERSION   = 1;
+    const STORE_NAME   = 'results';
+    const CACHE_VERSION = 2;   // bump when parse logic changes to auto-invalidate stale results
 
     /* ─────────────────────────────────────────
        X-POSITION THRESHOLDS (PDF points, 72pt = 1")
@@ -244,15 +245,18 @@ const Interpreter = (() => {
         const numPages = pdfDoc.numPages;
         const key      = _cacheKey(url, numPages);
 
-        // ── Cache hit — instant return ──
+        // ── Cache hit — instant return (only if version matches) ──
         const cached = await _cacheGet(key);
-        if (cached) {
+        if (cached && cached._v === CACHE_VERSION) {
             console.log(`SLATE Interpreter: cache hit — "${key}"`);
             if (typeof STATE !== 'undefined') STATE.interpreterData = cached;
             if (typeof CueEditor !== 'undefined' && typeof CueEditor.onInterpreterReady === 'function') {
                 CueEditor.onInterpreterReady(cached);
             }
             return cached;
+        }
+        if (cached) {
+            console.log(`SLATE Interpreter: stale cache (v${cached._v ?? 0} → v${CACHE_VERSION}), re-parsing…`);
         }
 
         console.log(`SLATE Interpreter: parsing ${numPages} pages…`);
@@ -268,6 +272,7 @@ const Interpreter = (() => {
         console.log(`SLATE Interpreter: sample text items across pages 1-3 = ${sampleCount}`);
         if (sampleCount < 5) {
             const result = {
+                _v:           CACHE_VERSION,
                 error:        'no-text',
                 source:       url.split('/').pop(),
                 parsedAt:     new Date().toISOString(),
@@ -305,6 +310,7 @@ const Interpreter = (() => {
         // ── Parse ──
         const parsed = _parse(pageLines);
         const result = {
+            _v:         CACHE_VERSION,
             source:     url.split('/').pop(),
             parsedAt:   new Date().toISOString(),
             totalPages: numPages,
@@ -314,11 +320,8 @@ const Interpreter = (() => {
         // ── Cache ──
         await _cacheSet(key, result);
         if (parsed.scenes.length === 0) {
-            console.warn(
-                'SLATE Interpreter: parsed OK but found 0 scenes. ' +
-                'Call Interpreter.diagnoseRaw(1) in the console to inspect page 1 ' +
-                'with x-coordinates — the X thresholds may need tuning for this PDF.'
-            );
+            console.warn('SLATE Interpreter: 0 scenes found — auto-running diagnoseRaw(1) to show raw extraction:');
+            diagnoseRaw(1);
         }
         console.log(
             `SLATE Interpreter: done — ${parsed.scenes.length} scenes, ` +
