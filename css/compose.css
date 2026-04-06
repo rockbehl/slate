@@ -291,6 +291,106 @@
     background: var(--accent);
 }
 
+/* ─────────────────────────────────────────────────
+   SOUNDCLOUD-STYLE CUE MARKERS
+   Thin vertical lines + scene-colored dot, positioned
+   by audio timestamp on the waveform body.
+───────────────────────────────────────────────── */
+
+.cue-marker {
+    position: absolute;
+    top: 22px;        /* just below pin-row */
+    bottom: 4px;
+    width: 1px;
+    transform: translateX(-50%);
+    background: var(--mc, rgba(201,168,76,.35));
+    z-index: 2;
+    cursor: pointer;
+    opacity: 0.35;
+    transition: opacity var(--t-base);
+}
+
+.cue-marker:hover { opacity: 1; z-index: 6; }
+.cue-marker.active { opacity: 0.9; z-index: 5; }
+
+/* Dot at top of the line */
+.cue-marker::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: -4px;
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--mc, rgba(201,168,76,.7));
+    transition: transform var(--t-base), box-shadow var(--t-base);
+}
+
+.cue-marker:hover::before {
+    transform: scale(1.4);
+    box-shadow: 0 0 6px var(--mc, rgba(201,168,76,.5));
+}
+
+.cue-marker.active::before {
+    transform: scale(1.2);
+    box-shadow: 0 0 8px var(--mc, rgba(201,168,76,.65));
+}
+
+/* No-track cues: de-emphasised */
+.cue-marker.tbd { opacity: 0.18; }
+.cue-marker.tbd:hover { opacity: 0.55; }
+
+/* Tooltip — appears above the dot on hover */
+.cue-tip {
+    position: absolute;
+    bottom: calc(100% + 14px);   /* above the dot */
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(8,8,8,.94);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 4px;
+    padding: 5px 9px 6px;
+    min-width: 110px;
+    max-width: 190px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--t-base);
+    white-space: nowrap;
+}
+
+.cue-marker:hover .cue-tip { opacity: 1; }
+
+/* Flip tooltip for markers near right edge */
+.cue-marker.tip-left  .cue-tip { left: auto; right: 0; transform: none; }
+/* Flip for markers near left edge */
+.cue-marker.tip-right .cue-tip { left: 0;    transform: none; }
+
+.ct-track {
+    font-size: 9px;
+    font-family: var(--font-mono);
+    color: var(--mc, rgba(201,168,76,.8));
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ct-meta {
+    font-size: 8px;
+    font-family: var(--font-mono);
+    color: rgba(255,255,255,.3);
+}
+
+.ct-note {
+    font-size: 8.5px;
+    color: rgba(255,255,255,.2);
+    font-style: italic;
+    white-space: normal;
+    line-height: 1.45;
+    margin-top: 2px;
+    max-width: 180px;
+}
+
 /* ── Cue table zone ── */
 .cue-zone {
     flex: 1;

@@ -6,6 +6,22 @@
 
 ---
 
+## v1.3.0 — Waveform Cue Markers + Interpreter Encoding Fix
+*2026-04-06*
+
+### Added
+- **SoundCloud-style cue markers** (`js/waveform.js`) — scene-colored dot + 1px vertical line on the waveform body, positioned by audio timestamp (falls back to page-based position when no duration is known). Hover tooltip shows track name, page, and director note. Silence cues render faded.
+- `Waveform.renderCueMarkers(cues, scenes)` — builds and caches all marker elements into `_markerMap` (cueIdx → element); called on Wavesurfer `ready` and from `app.js` after `loadCues()`
+- `Waveform.highlightCueMarker(idx)` — O(1) active-state toggle; called by `CueEditor.setActive()` so waveform marker and cue table row always move together
+- `_joinItems()` in `js/interpreter.js` — x-gap detection for per-character PDF encoding: if the gap between consecutive text items is less than half a character-width, they are joined without a space, preventing `"B O R I N G"` output from character-per-item PDFs
+
+### Changed
+- **`CueEditor.setActive()`** — now calls `Waveform.highlightCueMarker(cueIdx)` after updating the table row
+- **`Waveform.renderPins()` / `highlightPin()`** — pin highlight is now O(1) using a cached `_pinMap` (page → element); previously called `querySelectorAll('.pin')` on every 250ms render tick
+- **`CACHE_VERSION`** bumped to 4 — auto-invalidates stale IndexedDB results from before the `_joinItems` fix
+
+---
+
 ## v1.2.0 — Interpreter Hardening
 *2026-04-05*
 

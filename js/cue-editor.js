@@ -110,6 +110,7 @@ const CueEditor = (() => {
         STATE.currentCue = cueIdx;
         _refreshActiveRow();
         _scrollToActive();
+        if (typeof Waveform !== 'undefined') Waveform.highlightCueMarker(cueIdx);
     }
 
     function _refreshActiveRow() {

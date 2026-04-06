@@ -33,7 +33,7 @@ const Interpreter = (() => {
     const DB_NAME      = 'slate_interpreter';
     const DB_VERSION   = 1;
     const STORE_NAME   = 'results';
-    const CACHE_VERSION = 3;   // bump when parse logic changes to auto-invalidate stale results
+    const CACHE_VERSION = 4;   // bump when parse logic changes to auto-invalidate stale results
 
     /* ─────────────────────────────────────────
        X-POSITION THRESHOLDS (PDF points, 72pt = 1")
@@ -123,6 +123,26 @@ const Interpreter = (() => {
         return content.items;
     }
 
+    // Join per-character PDF items using x-gap detection.
+    // Some PDFs encode each character as a separate item with explicit positioning.
+    // Naively joining with spaces produces "B O R I N G" instead of "BORING".
+    // Strategy: if the gap between two consecutive items is < half a character-width,
+    // treat them as adjacent characters (no space). Otherwise insert a space.
+    function _joinItems(sorted) {
+        if (sorted.length === 0) return '';
+        let result = sorted[0].str;
+        for (let i = 1; i < sorted.length; i++) {
+            const prev      = sorted[i - 1];
+            const curr      = sorted[i];
+            const prevRight = prev.transform[4] + Math.abs(prev.width || 0);
+            const gap       = curr.transform[4] - prevRight;
+            // Approximate single-character width as half the font size
+            const charWidth = Math.abs(prev.transform[0]) * 0.5;
+            result += (gap < charWidth ? '' : ' ') + curr.str;
+        }
+        return result;
+    }
+
     function _itemsToLines(items) {
         // Group items by Y (rounded to 1pt) to reconstruct split text on the same line
         const byY = new Map();
@@ -139,7 +159,7 @@ const Interpreter = (() => {
             .sort((a, b) => b - a)
             .map(y => {
                 const sorted   = byY.get(y).sort((a, b) => a.transform[4] - b.transform[4]);
-                const text     = sorted.map(i => i.str).join(' ').replace(/\s+/g, ' ').trim();
+                const text     = _joinItems(sorted).replace(/\s+/g, ' ').trim();
                 const x        = sorted[0].transform[4];
                 const fontSize = Math.abs(sorted[0].transform[0]);
                 return { text, x, y, fontSize };
@@ -440,7 +460,7 @@ const Interpreter = (() => {
 
     // Expose internals when running under the test harness — never in normal use
     const _testAPI = (typeof module !== 'undefined' || (typeof __SLATE_TEST__ !== 'undefined' && __SLATE_TEST__))
-        ? { _classify, _itemsToLines, _cacheKey, X, SCENE_RE, TRANSITION_RE, CHAR_BLACKLIST }
+        ? { _classify, _itemsToLines, _joinItems, _cacheKey, X, SCENE_RE, TRANSITION_RE, CHAR_BLACKLIST }
         : null;
 
     return { analyze, getCache, clearCache, clearAll, diagnose, diagnoseRaw, _testAPI };

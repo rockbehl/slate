@@ -88,6 +88,7 @@ function loadCues() {
             Waveform.init();
             Waveform.renderPins(STATE.cues);
             Waveform.renderBands(STATE.scenes);
+            Waveform.renderCueMarkers(STATE.cues, STATE.scenes);
 
             const countLabel = document.getElementById('cue-count-label');
             if (countLabel) countLabel.textContent = `${STATE.cues.length} cues`;

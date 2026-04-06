@@ -154,7 +154,7 @@ function expect(val) {
 }
 
 /* ── Pull test APIs ── */
-const { _classify, _itemsToLines, _cacheKey, X, CHAR_BLACKLIST } = Interpreter._testAPI;
+const { _classify, _itemsToLines, _joinItems, _cacheKey, X, CHAR_BLACKLIST } = Interpreter._testAPI;
 const { _formatTime, _esc, _sceneForPage }                        = CueEditor._testAPI;
 
 /* ── INTERPRETER: classifier ── */
@@ -205,6 +205,41 @@ describe('Interpreter · _itemsToLines', () => {
     it('whitespace-only items skipped',  () => { const l = _itemsToLines([item('  ', 10, 700), item('Text', 50, 700)]); expect(l[0].x).toBe(50); });
     // Regression: 1pt rounding — 1pt-apart items must not merge
     it('1pt Y diff = 2 separate lines',  () => { const l = _itemsToLines([item('A', 10, 700), item('B', 10, 701)]); expect(l).toHaveLength(2); });
+});
+
+describe('Interpreter · _joinItems (per-character PDF)', () => {
+    // Helper: make a fake PDF item with x, width, fontSize, str
+    const mkItem = (str, x, width, fontSize) => ({
+        str,
+        transform: [fontSize, 0, 0, fontSize, x, 700],
+        width,
+    });
+
+    it('adjacent chars → no spaces (BORING)',  () => {
+        // Each char 6pt wide, fontSize=12, adjacent (no gap)
+        const items = 'BORING'.split('').map((c, i) => mkItem(c, i * 6, 6, 12));
+        expect(_joinItems(items)).toBe('BORING');
+    });
+    it('word gap → space inserted',            () => {
+        const a = mkItem('INT', 70, 18, 12);   // right edge at 88
+        const b = mkItem('OFFICE', 96, 36, 12); // gap = 8 > charWidth(6) → space
+        expect(_joinItems([a, b])).toBe('INT OFFICE');
+    });
+    it('mixed: adjacent chars + word gap',     () => {
+        // "FADE IN" where FADE is one item and IN is another with a gap
+        const items = [
+            mkItem('F', 70, 7, 12), mkItem('A', 77, 7, 12),
+            mkItem('D', 84, 7, 12), mkItem('E', 91, 7, 12),
+            mkItem('I', 106, 7, 12), mkItem('N', 113, 7, 12),  // 14pt gap before I
+        ];
+        expect(_joinItems(items)).toBe('FADE IN');
+    });
+    it('single item → returns str unchanged',  () => {
+        expect(_joinItems([mkItem('INT.', 70, 24, 12)])).toBe('INT.');
+    });
+    it('empty array → empty string',           () => {
+        expect(_joinItems([])).toBe('');
+    });
 });
 
 describe('Interpreter · _cacheKey', () => {

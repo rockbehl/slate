@@ -9,7 +9,7 @@ Active work and upcoming items. Updated as features ship.
 ### Core Shell — Phases 1–4
 - **PDF Engine** (`js/pdf-engine.js`) — PDF.js rendering, retina canvas, debounced resize, loading/error states
 - **Audio Engine** (`js/audio-engine.js`) — Howler.js playback, 250ms cue polling, fade in/out, single-track mode
-- **Waveform** (`js/waveform.js`) — Wavesurfer.js v7, muted mirror, procedural fallback bars, scene colour bands, cue pins, click-to-seek
+- **Waveform** (`js/waveform.js`) — Wavesurfer.js v7, muted mirror, procedural fallback bars, scene colour bands, cue pins, click-to-seek, SoundCloud-style cue markers (`renderCueMarkers`), O(1) pin/marker highlight via `_pinMap` / `_markerMap`
 - **Compose Mode** — split pane (24–64% drag), editable cue table, page notes, waveform zone
 - **Screen Mode** — single-page reader, keyboard nav, fullscreen (F key + button)
 - **Hover highlight system** — lightweight CSS transitions on all interactive elements
@@ -24,6 +24,7 @@ Active work and upcoming items. Updated as features ship.
 - Scanned PDF detection (samples pages 1–3, ≥10 items threshold)
 - Batched extraction (8 pages/batch) with `setTimeout(0)` yields
 - `suggestedCues[]` — one stub per scene, ready to import
+- Per-character PDF text joining — `_joinItems()` x-gap detection reassembles character-per-item PDFs; `CACHE_VERSION` 4
 
 ### Cue Editor rework
 - Fixed localStorage empty-array wipe bug (`[] || STATE.cues` → length guard)
@@ -47,10 +48,9 @@ Active work and upcoming items. Updated as features ship.
 - **Blocked** — needs authentication (SSH key or PAT)
 - All commits are local and ready
 
-### Interpreter ↔ UI wiring (active debugging)
+### Interpreter ↔ UI wiring
 - Button visible — amber when ready, grouped in `.cz-btn-group`
-- Pending: verify interpreter fires on real PDF (check console logs)
-- If PDF has no text layer: button shows "No text", whisper explains
+- Per-character encoding fix shipped — real PDFs now parse correctly
 - Diagnostics: open browser console, look for `SLATE PDFEngine: handing off to Interpreter…`
 
 ---
@@ -92,6 +92,7 @@ Active work and upcoming items. Updated as features ship.
 |------|--------|
 | Interpreter `_classify` | ✅ 20+ cases |
 | Interpreter `_itemsToLines` | ✅ 6 cases incl. 1pt regression |
+| Interpreter `_joinItems` | ✅ 5 cases (adjacent chars, word gap, mixed, edge cases) |
 | Interpreter `_cacheKey` | ✅ 2 cases |
 | CueEditor `_formatTime` | ✅ 7 cases |
 | CueEditor `_esc` | ✅ 7 cases |

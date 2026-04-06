@@ -25,7 +25,9 @@
 
 const Waveform = (() => {
 
-    let _ws = null; // WaveSurfer instance
+    let _ws         = null; // WaveSurfer instance
+    let _markerMap  = new Map(); // cueIdx → .cue-marker element (for O(1) highlight)
+    let _pinMap     = new Map(); // page    → .pin element      (avoids querySelectorAll)
 
     /* ─────────────────────────────────────────
        INIT — called once after AudioEngine resolves
@@ -71,7 +73,10 @@ const Waveform = (() => {
 
         // Mute immediately and again on ready — Howler owns actual audio output
         _ws.setVolume(0);
-        _ws.on('ready', () => { _ws.setVolume(0); });
+        _ws.on('ready', () => {
+            _ws.setVolume(0);
+            renderCueMarkers(STATE.cues, STATE.scenes);
+        });
 
         // User clicks waveform → seek AudioEngine (v7 'interaction' event, not v6 'seek')
         // setTime() does NOT fire 'interaction', so no feedback loop
@@ -96,18 +101,19 @@ const Waveform = (() => {
         const row = document.getElementById('pin-row');
         if (!row || !STATE.totalPages) return;
         row.innerHTML = '';
+        _pinMap = new Map();
 
         cues.forEach(cue => {
             const pct = (cue.page / STATE.totalPages) * 100;
             const pin = document.createElement('div');
             pin.className = 'pin' + (cue.page === STATE.currentPage ? ' cur' : '');
-            pin.dataset.p = cue.page;
             pin.style.left = pct + '%';
             pin.textContent = 'P.' + cue.page;
             pin.addEventListener('click', () => {
                 if (typeof goToPage === 'function') goToPage(cue.page);
             });
             row.appendChild(pin);
+            _pinMap.set(cue.page, pin);
         });
     }
 
@@ -138,10 +144,102 @@ const Waveform = (() => {
     /* ─────────────────────────────────────────
        HIGHLIGHT CURRENT PIN
     ───────────────────────────────────────── */
+    // O(1) — uses cached _pinMap instead of querySelectorAll every 250ms tick
+    let _prevPinPage = null;
     function highlightPin(pageNum) {
-        document.querySelectorAll('.pin').forEach(el => {
-            el.classList.toggle('cur', +el.dataset.p === pageNum);
+        if (_prevPinPage !== null && _prevPinPage !== pageNum) {
+            _pinMap.get(_prevPinPage)?.classList.remove('cur');
+        }
+        _pinMap.get(pageNum)?.classList.add('cur');
+        _prevPinPage = pageNum;
+    }
+
+    /* ─────────────────────────────────────────
+       SOUNDCLOUD-STYLE CUE MARKERS
+       Positioned on the waveform body by audio timestamp.
+       Falls back to page-based position when no audio duration is known.
+    ───────────────────────────────────────── */
+    function renderCueMarkers(cues, scenes) {
+        const box = document.getElementById('wave-box');
+        if (!box || !cues || !cues.length) return;
+
+        box.querySelectorAll('.cue-marker').forEach(el => el.remove());
+        _markerMap = new Map();
+
+        const totalDuration = (typeof AudioEngine !== 'undefined') ? AudioEngine.getDuration() : 0;
+        const useTime = totalDuration > 0;
+
+        // Build page→scene color lookup
+        const sceneColor = page => {
+            const s = (scenes || []).find(s => page >= s.fromPage && page <= s.toPage);
+            return s ? s.color : 'rgba(201,168,76,0.7)';
+        };
+
+        cues.forEach((cue, idx) => {
+            const pct = useTime
+                ? Math.max(0, Math.min(100, (cue.at / totalDuration) * 100))
+                : Math.max(0, Math.min(100, (cue.page / (STATE.totalPages || 92)) * 100));
+
+            const color   = sceneColor(cue.page);
+            const marker  = document.createElement('div');
+            marker.className = 'cue-marker';
+            if (pct > 75) marker.classList.add('tip-left');
+            else if (pct < 25) marker.classList.add('tip-right');
+            if (!cue.track) marker.classList.add('tbd');
+            marker.dataset.idx = idx;
+            marker.style.left  = pct + '%';
+            marker.style.setProperty('--mc', color);
+
+            // Tooltip
+            const tip = document.createElement('div');
+            tip.className = 'cue-tip';
+
+            const trackEl = document.createElement('span');
+            trackEl.className = 'ct-track';
+            trackEl.textContent = cue.track || 'No track';
+
+            const metaEl = document.createElement('span');
+            metaEl.className = 'ct-meta';
+            metaEl.textContent = `P.${cue.page}` + (useTime && cue.at ? `  ${_fmtSec(cue.at)}` : '');
+
+            tip.appendChild(trackEl);
+            tip.appendChild(metaEl);
+
+            if (cue.note) {
+                const noteEl = document.createElement('span');
+                noteEl.className = 'ct-note';
+                noteEl.textContent = cue.note;
+                tip.appendChild(noteEl);
+            }
+
+            marker.appendChild(tip);
+
+            marker.addEventListener('click', () => {
+                if (typeof goToPage === 'function') goToPage(cue.page);
+                if (useTime && typeof AudioEngine !== 'undefined') {
+                    AudioEngine.seekTo((cue.at / totalDuration) * 100);
+                    if (typeof renderProgress === 'function') renderProgress();
+                }
+            });
+
+            box.appendChild(marker);
+            _markerMap.set(idx, marker);
         });
+    }
+
+    // Highlight the active cue marker — called from CueEditor.setActive()
+    let _prevMarkerIdx = null;
+    function highlightCueMarker(idx) {
+        if (_prevMarkerIdx !== null && _prevMarkerIdx !== idx) {
+            _markerMap.get(_prevMarkerIdx)?.classList.remove('active');
+        }
+        if (idx !== null) _markerMap.get(idx)?.classList.add('active');
+        _prevMarkerIdx = idx;
+    }
+
+    function _fmtSec(s) {
+        const m = Math.floor(s / 60);
+        return m + ':' + String(Math.floor(s % 60)).padStart(2, '0');
     }
 
     /* ─────────────────────────────────────────
@@ -200,7 +298,7 @@ const Waveform = (() => {
     }
 
     /* Public API */
-    return { init, renderPins, renderBands, highlightPin, syncPlayhead, rebuild, buildProcedural };
+    return { init, renderPins, renderBands, renderCueMarkers, highlightCueMarker, highlightPin, syncPlayhead, rebuild, buildProcedural };
 
 })();
 
