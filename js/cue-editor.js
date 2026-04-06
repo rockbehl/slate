@@ -334,7 +334,12 @@ const CueEditor = (() => {
         if (el) el.textContent = `${STATE.cues.length} cue${STATE.cues.length !== 1 ? 's' : ''}`;
     }
 
+    // Expose internals when running under the test harness — never in normal use
+    const _testAPI = (typeof module !== 'undefined' || (typeof __SLATE_TEST__ !== 'undefined' && __SLATE_TEST__))
+        ? { _formatTime, _esc, _sceneForPage }
+        : null;
+
     /* Public API */
-    return { init, render, setActive, save, exportJSON, suggestCues, onInterpreterReady };
+    return { init, render, setActive, save, exportJSON, suggestCues, onInterpreterReady, _testAPI };
 
 })();

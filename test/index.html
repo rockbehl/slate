@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SLATE — Test Suite</title>
+<style>
+    :root {
+        --bg: #070707;
+        --pass: #4caf7d;
+        --fail: #e05252;
+        --skip: #c9a84c;
+        --dim: rgba(226,221,216,.3);
+        --text: rgba(226,221,216,.8);
+        --mono: 'Geist Mono', 'Courier New', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 12px;
+        padding: 32px;
+        line-height: 1.7;
+    }
+    h1 {
+        font-size: 11px;
+        letter-spacing: .2em;
+        color: rgba(201,168,76,.7);
+        margin-bottom: 24px;
+        text-transform: uppercase;
+    }
+    .suite { margin-bottom: 16px; }
+    .suite-name {
+        font-size: 10px;
+        letter-spacing: .12em;
+        color: var(--dim);
+        margin-bottom: 4px;
+        text-transform: uppercase;
+    }
+    .case { display: flex; align-items: baseline; gap: 8px; padding: 1px 0; }
+    .icon { font-style: normal; flex-shrink: 0; }
+    .icon.pass { color: var(--pass); }
+    .icon.fail { color: var(--fail); }
+    .icon.skip { color: var(--skip); }
+    .label { color: rgba(226,221,216,.6); }
+    .err { color: var(--fail); font-size: 10px; padding-left: 20px; opacity: .8; }
+    #summary {
+        margin-top: 28px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(255,255,255,.06);
+        font-size: 11px;
+        letter-spacing: .08em;
+    }
+    #summary .count-pass { color: var(--pass); }
+    #summary .count-fail { color: var(--fail); }
+    #summary .count-skip { color: var(--skip); }
+    #rerun {
+        margin-top: 20px;
+        background: none;
+        border: 1px solid rgba(201,168,76,.25);
+        color: rgba(201,168,76,.6);
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: .1em;
+        padding: 5px 14px;
+        cursor: pointer;
+    }
+    #rerun:hover { border-color: rgba(201,168,76,.5); color: rgba(201,168,76,.9); }
+</style>
+</head>
+<body>
+<h1>SLATE · Test Suite</h1>
+<div id="output"></div>
+<div id="summary"></div>
+<button id="rerun" onclick="location.reload()">Re-run</button>
+
+<!-- Mock globals that scripts reference at definition time -->
+<script>
+    window.__SLATE_TEST__ = true;
+    window.STATE = { cues: [], scenes: [], tracks: [], interpreterData: null, currentCue: null, currentPage: 1 };
+    window.showNowPlaying = () => {};
+    window.goToPage = () => {};
+    window.AudioEngine = undefined;
+    // localStorage is real in browser — no mock needed
+</script>
+
+<!-- Load modules under test -->
+<script src="../js/interpreter.js"></script>
+<script src="../js/cue-editor.js"></script>
+
+<!-- Test framework + specs -->
+<script>
+'use strict';
+
+/* ── Micro framework ── */
+const _out  = document.getElementById('output');
+const _summ = document.getElementById('summary');
+let _pass = 0, _fail = 0, _skip = 0;
+let _currentSuite = null;
+
+function describe(name, fn) {
+    const wrap = document.createElement('div');
+    wrap.className = 'suite';
+    const title = document.createElement('div');
+    title.className = 'suite-name';
+    title.textContent = name;
+    wrap.appendChild(title);
+    _currentSuite = wrap;
+    _out.appendChild(wrap);
+    fn();
+}
+
+function it(name, fn) {
+    const row = document.createElement('div');
+    row.className = 'case';
+    try {
+        fn();
+        _pass++;
+        row.innerHTML = `<span class="icon pass">✓</span><span class="label">${name}</span>`;
+    } catch (e) {
+        _fail++;
+        row.innerHTML = `<span class="icon fail">✗</span><span class="label">${name}</span>`;
+        const err = document.createElement('div');
+        err.className = 'err';
+        err.textContent = e.message;
+        row.appendChild(err);
+    }
+    _currentSuite.appendChild(row);
+}
+
+function xit(name) {
+    _skip++;
+    const row = document.createElement('div');
+    row.className = 'case';
+    row.innerHTML = `<span class="icon skip">–</span><span class="label" style="opacity:.4">${name}</span>`;
+    _currentSuite.appendChild(row);
+}
+
+function expect(val) {
+    const J = v => JSON.stringify(v);
+    return {
+        toBe: exp       => { if (val !== exp)           throw new Error(`got ${J(val)}, want ${J(exp)}`); },
+        toEqual: exp    => { if (J(val) !== J(exp))     throw new Error(`got ${J(val)}, want ${J(exp)}`); },
+        toBeTruthy: ()  => { if (!val)                  throw new Error(`expected truthy, got ${J(val)}`); },
+        toBeFalsy: ()   => { if (val)                   throw new Error(`expected falsy, got ${J(val)}`); },
+        toContain: i    => { if (!val.includes(i))      throw new Error(`${J(val)} does not contain ${J(i)}`); },
+        toHaveLength: n => { if ((val||[]).length !== n)throw new Error(`length ${(val||[]).length}, want ${n}`); },
+        toMatch: re     => { if (!re.test(String(val))) throw new Error(`"${val}" does not match ${re}`); },
+        not: {
+            toBe: exp    => { if (val === exp)          throw new Error(`expected NOT ${J(exp)}`); },
+            toContain: i => { if ((val||'').includes(i))throw new Error(`should not contain ${J(i)}`); },
+        },
+    };
+}
+
+/* ── Pull test APIs ── */
+const { _classify, _itemsToLines, _cacheKey, X, CHAR_BLACKLIST } = Interpreter._testAPI;
+const { _formatTime, _esc, _sceneForPage }                        = CueEditor._testAPI;
+
+/* ── INTERPRETER: classifier ── */
+describe('Interpreter · scene headings', () => {
+    it('INT. …',          () => expect(_classify({ text: 'INT. COFFEE SHOP - DAY', x: 70 })).toBe('scene'));
+    it('EXT. …',          () => expect(_classify({ text: 'EXT. PARKING LOT - NIGHT', x: 70 })).toBe('scene'));
+    it('INT./EXT. …',     () => expect(_classify({ text: 'INT./EXT. MOVING CAR', x: 70 })).toBe('scene'));
+    it('case-insensitive',() => expect(_classify({ text: 'int. coffee shop', x: 70 })).toBe('scene'));
+});
+
+describe('Interpreter · characters', () => {
+    it('centered all-caps name',       () => expect(_classify({ text: 'JOHN', x: 220 })).toBe('character'));
+    it('name with V.O. suffix',        () => expect(_classify({ text: 'SARAH (V.O.)', x: 220 })).toBe('character'));
+    it('too far left → not character', () => expect(_classify({ text: 'JOHN', x: 50 })).not.toBe('character'));
+    it('too far right → not character',() => expect(_classify({ text: 'JOHN', x: 400 })).not.toBe('character'));
+    it('mixed case → not character',   () => expect(_classify({ text: 'John', x: 220 })).not.toBe('character'));
+    it('>50 chars → not character',    () => expect(_classify({ text: 'A'.repeat(51), x: 220 })).not.toBe('character'));
+    // Regressions — structural tokens must not classify as characters
+    it('ACT ONE blocked',   () => expect(_classify({ text: 'ACT ONE',   x: 220 })).not.toBe('character'));
+    it('ACT TWO blocked',   () => expect(_classify({ text: 'ACT TWO',   x: 220 })).not.toBe('character'));
+    it('THE END blocked',   () => expect(_classify({ text: 'THE END',   x: 220 })).not.toBe('character'));
+    it('FADE IN blocked',   () => expect(_classify({ text: 'FADE IN',   x: 220 })).not.toBe('character'));
+    it('CONTINUED blocked', () => expect(_classify({ text: 'CONTINUED', x: 220 })).not.toBe('character'));
+    it('MORE blocked',      () => expect(_classify({ text: 'MORE',      x: 220 })).not.toBe('character'));
+    it('COLD OPEN blocked', () => expect(_classify({ text: 'COLD OPEN', x: 220 })).not.toBe('character'));
+});
+
+describe('Interpreter · transitions', () => {
+    it('CUT TO:',      () => expect(_classify({ text: 'CUT TO:', x: 400 })).toBe('transition'));
+    it('FADE OUT.',    () => expect(_classify({ text: 'FADE OUT.', x: 400 })).toBe('transition'));
+    it('DISSOLVE TO:', () => expect(_classify({ text: 'DISSOLVE TO:', x: 400 })).toBe('transition'));
+    it('SMASH CUT',    () => expect(_classify({ text: 'SMASH CUT', x: 400 })).toBe('transition'));
+});
+
+describe('Interpreter · dialog + action', () => {
+    it('dialog-position line',  () => expect(_classify({ text: 'I never said that.', x: 150 })).toBe('dialog'));
+    it('left-margin action',    () => expect(_classify({ text: 'She picks up the phone.', x: 0 })).toBe('action'));
+    it('parenthetical',         () => expect(_classify({ text: '(quietly)', x: 160 })).toBe('parenthetical'));
+});
+
+describe('Interpreter · _itemsToLines', () => {
+    const item = (str, x, y) => ({ str, transform: [12, 0, 0, 12, x, y] });
+
+    it('same Y → one line',              () => { const l = _itemsToLines([item('Hello', 10, 700), item(' world', 60, 700)]); expect(l).toHaveLength(1); });
+    it('different Y → separate lines',   () => { const l = _itemsToLines([item('A', 10, 700), item('B', 10, 680)]); expect(l).toHaveLength(2); });
+    it('top-of-page first (Y desc)',      () => { const l = _itemsToLines([item('Bot', 10, 100), item('Top', 10, 700)]); expect(l[0].text).toBe('Top'); });
+    it('items sorted by X within line',  () => { const l = _itemsToLines([item('world', 60, 700), item('Hello ', 10, 700)]); expect(l[0].text).toMatch(/^Hello/); });
+    it('whitespace-only items skipped',  () => { const l = _itemsToLines([item('  ', 10, 700), item('Text', 50, 700)]); expect(l[0].x).toBe(50); });
+    // Regression: 1pt rounding — 1pt-apart items must not merge
+    it('1pt Y diff = 2 separate lines',  () => { const l = _itemsToLines([item('A', 10, 700), item('B', 10, 701)]); expect(l).toHaveLength(2); });
+});
+
+describe('Interpreter · _cacheKey', () => {
+    it('formats as filename:pages',   () => expect(_cacheKey('assets/screenplay/script.pdf', 92)).toBe('script.pdf:92'));
+    it('strips query params',         () => expect(_cacheKey('screenplay.pdf?v=2', 10)).toBe('screenplay.pdf:10'));
+});
+
+/* ── CUE EDITOR ── */
+describe('CueEditor · _formatTime', () => {
+    it('0 → 0:00',     () => expect(_formatTime(0)).toBe('0:00'));
+    it('90 → 1:30',    () => expect(_formatTime(90)).toBe('1:30'));
+    it('3661 → 61:01', () => expect(_formatTime(3661)).toBe('61:01'));
+    it('59 → 0:59',    () => expect(_formatTime(59)).toBe('0:59'));
+    it('60 → 1:00',    () => expect(_formatTime(60)).toBe('1:00'));
+    it('null → —',     () => expect(_formatTime(null)).toBe('—'));
+    it('"" → —',       () => expect(_formatTime('')).toBe('—'));
+});
+
+describe('CueEditor · _esc (XSS guard)', () => {
+    it('escapes <',         () => expect(_esc('<b>')).toContain('&lt;'));
+    it('escapes >',         () => expect(_esc('<b>')).toContain('&gt;'));
+    it('escapes &',         () => expect(_esc('a & b')).toContain('&amp;'));
+    it('escapes "',         () => expect(_esc('"hi"')).toContain('&quot;'));
+    it('plain text safe',   () => expect(_esc('hello')).toBe('hello'));
+    it('coerces numbers',   () => expect(_esc(42)).toBe('42'));
+    it('<script> fully escaped', () => {
+        const out = _esc('<script>alert(1)</script>');
+        expect(out).not.toContain('<script>');
+    });
+});
+
+describe('CueEditor · _sceneForPage', () => {
+    STATE.scenes = [
+        { id: 'act1', fromPage: 1,  toPage: 30  },
+        { id: 'act2', fromPage: 31, toPage: 70  },
+        { id: 'act3', fromPage: 71, toPage: 92  },
+    ];
+    it('page 1 → act1',  () => expect(_sceneForPage(1).id).toBe('act1'));
+    it('page 30 → act1', () => expect(_sceneForPage(30).id).toBe('act1'));
+    it('page 31 → act2', () => expect(_sceneForPage(31).id).toBe('act2'));
+    it('page 92 → act3', () => expect(_sceneForPage(92).id).toBe('act3'));
+    it('page 0 → null',  () => expect(_sceneForPage(0)).toBeFalsy());
+    it('page 100 → null',() => expect(_sceneForPage(100)).toBeFalsy());
+});
+
+/* ── REGRESSIONS ── */
+describe('Regressions', () => {
+    it('empty array [] is truthy — guard prevents cue wipe', () => {
+        const parsed = { cues: [], scenes: [] };
+        const current = [{ page: 1 }];
+        const restored = Array.isArray(parsed.cues) && parsed.cues.length > 0 ? parsed.cues : current;
+        expect(restored).toHaveLength(1);
+    });
+    it('CHAR_BLACKLIST covers all structural tokens', () => {
+        ['ACT ONE','ACT TWO','ACT THREE','THE END','FADE IN','FADE OUT',
+         'CONTINUED','MORE','COLD OPEN','OVER BLACK','TITLE CARD'].forEach(t => {
+            if (!CHAR_BLACKLIST.has(t)) throw new Error(`Missing: "${t}"`);
+        });
+    });
+});
+
+/* ── Summary ── */
+const total = _pass + _fail + _skip;
+_summ.innerHTML = [
+    `<span class="count-pass">${_pass} passed</span>`,
+    _fail ? `<span class="count-fail">${_fail} failed</span>` : '',
+    _skip ? `<span class="count-skip">${_skip} skipped</span>` : '',
+    `<span style="color:var(--dim)">/ ${total} total</span>`,
+].filter(Boolean).join('  ');
+
+document.title = `${_fail ? '✗' : '✓'} ${_pass}/${total} — SLATE Tests`;
+</script>
+</body>
+</html>

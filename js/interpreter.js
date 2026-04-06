@@ -362,6 +362,11 @@ const Interpreter = (() => {
         } catch (_) {}
     }
 
-    return { analyze, getCache, clearCache, clearAll };
+    // Expose internals when running under the test harness — never in normal use
+    const _testAPI = (typeof module !== 'undefined' || (typeof __SLATE_TEST__ !== 'undefined' && __SLATE_TEST__))
+        ? { _classify, _itemsToLines, _cacheKey, X, SCENE_RE, TRANSITION_RE, CHAR_BLACKLIST }
+        : null;
+
+    return { analyze, getCache, clearCache, clearAll, _testAPI };
 
 })();
