@@ -20,6 +20,7 @@ const CueEditor = (() => {
     const STORAGE_KEY = 'slate_cues';
     let _pendingSuggest  = false;
     let _prevActiveIdx   = null;   // track last highlighted row to avoid full-scan
+    let _fuse            = null;   // Fuse.js instance, rebuilt after each render
 
     /* ─────────────────────────────────────────
        INIT — call after cues + scenes loaded
@@ -100,6 +101,34 @@ const CueEditor = (() => {
             });
 
             tbody.appendChild(tr);
+        });
+
+        // Rebuild Fuse index after every render so search reflects current cues
+        if (typeof Fuse !== 'undefined') {
+            _fuse = new Fuse(STATE.cues, {
+                keys:      ['scene', 'track', 'note'],
+                threshold: 0.35,
+                ignoreLocation: true,
+            });
+        }
+    }
+
+    /* ─────────────────────────────────────────
+       FUZZY SEARCH (Fuse.js)
+    ───────────────────────────────────────── */
+    function search(query) {
+        const tbody = document.getElementById('cue-tbody');
+        if (!tbody) return;
+
+        if (!query || !_fuse) {
+            // Show everything
+            [...tbody.rows].forEach(r => r.style.display = '');
+            return;
+        }
+
+        const hits = new Set(_fuse.search(query).map(r => r.refIndex));
+        [...tbody.rows].forEach((r, i) => {
+            r.style.display = hits.has(i) ? '' : 'none';
         });
     }
 
@@ -341,6 +370,6 @@ const CueEditor = (() => {
         : null;
 
     /* Public API */
-    return { init, render, setActive, save, exportJSON, suggestCues, onInterpreterReady, _testAPI };
+    return { init, render, search, setActive, save, exportJSON, suggestCues, onInterpreterReady, _testAPI };
 
 })();

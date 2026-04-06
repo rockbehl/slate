@@ -377,20 +377,12 @@ window.toggleFullscreen = toggleFullscreen;
    KEYBOARD SHORTCUTS
 ═══════════════════════════════════════════════ */
 function initKeyboard() {
-    document.addEventListener('keydown', e => {
-        // Don't intercept when typing in any editable element
-        if (e.target.tagName === 'INPUT'    ||
-            e.target.tagName === 'TEXTAREA' ||
-            e.target.isContentEditable) return;
-
-        switch (e.key) {
-            case 'ArrowRight': pg(1);              break;
-            case 'ArrowLeft':  pg(-1);             break;
-            case ' ':          e.preventDefault(); togglePlay(); break;
-            case 'm': case 'M': Comments.capture(); break;
-            case 's': case 'S': setMode('screen');     break;
-            case 'c': case 'C': setMode('compose');    break;
-            case 'f': case 'F': e.preventDefault(); toggleFullscreen(); break;
-        }
-    });
+    // hotkeys.js automatically skips shortcuts when an input/textarea is focused
+    hotkeys('right',  ()  => pg(1));
+    hotkeys('left',   ()  => pg(-1));
+    hotkeys('space',  e   => { e.preventDefault(); togglePlay(); });
+    hotkeys('m,M',    ()  => Comments.capture());
+    hotkeys('s,S',    ()  => setMode('screen'));
+    hotkeys('c,C',    ()  => setMode('compose'));
+    hotkeys('f,F',    e   => { e.preventDefault(); toggleFullscreen(); });
 }

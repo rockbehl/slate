@@ -25,6 +25,12 @@
 
     <!-- Phase 3 → Wavesurfer.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/7.8.2/wavesurfer.min.js"></script>
+
+    <!-- Fuse.js — fuzzy cue search (11KB) -->
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7/dist/fuse.min.js"></script>
+
+    <!-- Hotkeys.js — keyboard shortcut manager (5KB) -->
+    <script src="https://cdn.jsdelivr.net/npm/hotkeys-js@3/dist/hotkeys.min.js"></script>
 </head>
 
 <!--
@@ -169,6 +175,9 @@
             <section class="cue-zone" aria-label="Cues and notes">
                 <div class="cz-hdr">
                     <span class="panel-lbl">Cues · Notes</span>
+                    <input class="cue-search" id="cue-search" type="search"
+                           placeholder="search…" autocomplete="off" spellcheck="false"
+                           oninput="CueEditor.search(this.value)" aria-label="Search cues">
                     <div class="cz-btn-group">
                         <button class="ghost-btn suggest-btn" id="suggest-btn"
                                 onclick="CueEditor.suggestCues()"

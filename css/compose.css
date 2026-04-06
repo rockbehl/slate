@@ -414,6 +414,34 @@
 
 .cz-hdr:hover { opacity: 1; }
 
+/* Cue fuzzy search input */
+.cue-search {
+    flex: 1;
+    max-width: 140px;
+    background: none;
+    border: none;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+    color: var(--text-2);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: .04em;
+    padding: 1px 4px 2px;
+    outline: none;
+    opacity: .45;
+    transition: opacity var(--t-base), border-color var(--t-base);
+}
+
+.cue-search:focus,
+.cue-search:not(:placeholder-shown) {
+    opacity: 1;
+    border-bottom-color: rgba(201,168,76,.35);
+}
+
+.cue-search::placeholder { color: var(--text-4); }
+
+/* Hide the native clear (×) button on search inputs */
+.cue-search::-webkit-search-cancel-button { display: none; }
+
 /* Button group — keeps action buttons together on the right */
 .cz-btn-group {
     display: flex;

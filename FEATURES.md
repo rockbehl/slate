@@ -75,6 +75,13 @@ Active work and upcoming items. Updated as features ship.
 - Each coloured band should show scene label on hover
 - Currently bands render but have no text
 
+### Phase 4 — Wavesurfer Regions Plugin
+- Replace hand-rolled `.cue-marker` DOM layer with Wavesurfer v7 Regions plugin
+- CDN: `https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js`
+- Scene bands + cue pins become first-class draggable Wavesurfer objects
+- Requires real audio to be loaded (no procedural fallback)
+- **Start this soon** — natural next step after real audio files land in `assets/audio/`
+
 ### PDF Engine — Multi-page Scroll (Screen Mode)
 - Option to show all pages scrolled vertically instead of one-at-a-time
 - Would require switching from single canvas to virtual scroll with lazy rendering
