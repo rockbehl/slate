@@ -1,0 +1,136 @@
+{
+  "_comment": "SLATE cues.json — page↔audio sync points. 'track' references an id from assets/audio/tracks.json.",
+
+  "scenes": [
+    {
+      "id":       "act1",
+      "label":    "ACT I",
+      "fromPage": 1,
+      "toPage":   30,
+      "color":    "#5b8db5"
+    },
+    {
+      "id":       "act2a",
+      "label":    "ACT II — A",
+      "fromPage": 31,
+      "toPage":   55,
+      "color":    "#b58c5b"
+    },
+    {
+      "id":       "act2b",
+      "label":    "ACT II — B",
+      "fromPage": 56,
+      "toPage":   70,
+      "color":    "#8b5bb5"
+    },
+    {
+      "id":       "act3",
+      "label":    "ACT III",
+      "fromPage": 71,
+      "toPage":   92,
+      "color":    "#5bb58c"
+    }
+  ],
+
+  "cues": [
+    {
+      "page":    1,
+      "scene":   "INT. APARTMENT — DAWN",
+      "track":   "Teri Aisi Sazaa 0.2",
+      "at":      0,
+      "fadeIn":  2.0,
+      "fadeOut": 2.0,
+      "note":    "Silence first. Piano enters slowly. Hold before title card drops."
+    },
+    {
+      "page":    8,
+      "scene":   "EXT. STREET — EARLY MORNING",
+      "track":   "Teri Aisi Sazaa 0.2",
+      "at":      38,
+      "fadeIn":  1.5,
+      "fadeOut": 2.5,
+      "note":    "He walks. The city hasn't woken up yet. Keep it thin."
+    },
+    {
+      "page":    15,
+      "scene":   "INT. PRECINCT — HALLWAY",
+      "track":   "Teri Aisi Sazaa 0.2",
+      "at":      82,
+      "fadeIn":  1.0,
+      "fadeOut": 2.0,
+      "note":    "Low drone underneath. Something is wrong but nobody's said it yet."
+    },
+    {
+      "page":    22,
+      "scene":   "INT. EVIDENCE ROOM — NIGHT",
+      "track":   "Teri Aisi Sazaa 0.2",
+      "at":      145,
+      "fadeIn":  0.5,
+      "fadeOut": 2.0,
+      "note":    "Hold on the shoe. This is the emotional core — don't rush the cut."
+    },
+    {
+      "page":    31,
+      "scene":   "EXT. RIVER — DAWN",
+      "track":   "Teri Aisi Sazaa 0.2",
+      "at":      190,
+      "fadeIn":  3.0,
+      "fadeOut": 3.0,
+      "note":    "First breath. Water sounds sit under the piano. Sparse."
+    },
+    {
+      "page":    42,
+      "scene":   "INT. PRECINCT — BULLPEN",
+      "track":   "Teri Aisi Sazaa 0.2",
+      "at":      237,
+      "fadeIn":  1.5,
+      "fadeOut": 2.5,
+      "note":    "Fade out as Cole sits down. Room tone takes over."
+    },
+    {
+      "page":    55,
+      "scene":   "INT. COURTROOM",
+      "track":   "",
+      "at":      null,
+      "fadeIn":  2.0,
+      "fadeOut": 2.0,
+      "note":    "No music. Let the silence prosecute."
+    },
+    {
+      "page":    63,
+      "scene":   "INT. INTERROGATION ROOM",
+      "track":   "Teri Aisi Sazaa 0.2",
+      "at":      278,
+      "fadeIn":  1.5,
+      "fadeOut": 2.0,
+      "note":    "Crossfade on the door slam — not before. Dread, not menace."
+    },
+    {
+      "page":    71,
+      "scene":   "INT. COLE'S CAR — MOVING",
+      "track":   "",
+      "at":      null,
+      "fadeIn":  1.5,
+      "fadeOut": 1.5,
+      "note":    "He already knows. Don't score what he's thinking."
+    },
+    {
+      "page":    80,
+      "scene":   "EXT. ROOFTOP — NIGHT",
+      "track":   "Teri Aisi Sazaa 0.2",
+      "at":      312,
+      "fadeIn":  2.0,
+      "fadeOut": 1.5,
+      "note":    "Piano motif from the opening returns — quieter now, further away."
+    },
+    {
+      "page":    88,
+      "scene":   "INT. APARTMENT — DAWN",
+      "track":   "Teri Aisi Sazaa 0.2",
+      "at":      351,
+      "fadeIn":  2.5,
+      "fadeOut": 3.0,
+      "note":    "Full swell on the cut to black. This is the moment."
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+/* ─────────────────────────────────────────────────
+   SLATE — Design Tokens
+   Palette A: Film Archive
+   "Just enough to notice, just enough to blend in."
+───────────────────────────────────────────────── */
+
+:root {
+
+    /* ── Colour ── */
+    --bg:           #070707;      /* main background */
+    --surface:      #0e0e0e;      /* slightly elevated surface */
+    --surface2:     #141414;      /* second level surface */
+    --border:       rgba(255,255,255,.055);   /* default border */
+    --border-soft:  rgba(255,255,255,.03);    /* very subtle border */
+
+    /* Text */
+    --text:         #e2ddd8;      /* primary text */
+    --text-2:       rgba(226,221,216,.55);    /* secondary */
+    --text-3:       rgba(226,221,216,.28);    /* tertiary */
+    --text-4:       rgba(226,221,216,.12);    /* ghost */
+
+    /* Accent — amber gold, used sparingly */
+    --accent:       #c9a84c;
+    --accent-mid:   rgba(201,168,76,.45);
+    --accent-soft:  rgba(201,168,76,.12);
+    --accent-dim:   rgba(201,168,76,.06);
+
+    /* Screenplay page */
+    --page-bg:      #faf8f4;
+    --page-text:    #1a1a1a;
+    --page-dim:     #888;
+
+    /* Scene band colours (used in waveform + cue dots) */
+    --scene-blue:   #5b8db5;
+    --scene-amber:  #b58c5b;
+    --scene-purple: #8b5bb5;
+    --scene-green:  #5bb58c;
+
+    /* ── Typography ── */
+    --font-ui:      'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono:    'Geist Mono', 'Courier New', monospace;
+    --font-screen:  'Courier New', Courier, monospace;
+
+    /* ── Spacing (4px base unit) ── */
+    --sp-1:   4px;
+    --sp-2:   8px;
+    --sp-3:   12px;
+    --sp-4:   16px;
+    --sp-5:   20px;
+    --sp-6:   24px;
+    --sp-8:   32px;
+    --sp-10:  40px;
+    --sp-12:  48px;
+    --sp-16:  64px;
+
+    /* ── Layout ── */
+    --bar-h:       52px;   /* floating audio pill height */
+    --bar-bottom:  22px;   /* floating audio pill bottom offset */
+    --topbar-h:    40px;   /* compose topbar height */
+    --panel-nav-h: 34px;   /* compose script panel nav height */
+
+    /* ── Radii ── */
+    --radius-sm:   4px;
+    --radius-md:   6px;
+    --radius-lg:   10px;
+    --radius-pill: 36px;
+    --radius-full: 9999px;
+
+    /* ── Transitions ── */
+    --t-fast:   .15s ease;
+    --t-base:   .22s ease;
+    --t-slow:   .4s  ease;
+
+    /* ── Opacity levels for ambient UI ── */
+    --ui-ambient: .35;    /* default opacity for non-critical UI */
+    --ui-hover:   1;      /* opacity on hover */
+    --ui-active:  1;      /* active/selected state */
+
+    /* ── Shadows ── */
+    --shadow-page:    0 32px 80px rgba(0,0,0,.75), 0 0 0 1px rgba(0,0,0,.2);
+    --shadow-page-sm: 0 12px 48px rgba(0,0,0,.7);
+    --shadow-float:   0 8px 40px rgba(0,0,0,.55), 0 1px 0 rgba(255,255,255,.04) inset;
+}

@@ -1,0 +1,453 @@
+/* ─────────────────────────────────────────────────
+   SLATE — Shared Components
+   Buttons, nav, badges, mode toggle, now-playing whisper
+───────────────────────────────────────────────── */
+
+/* ─────────────────────────────────────────────────
+   MODE SWITCHER — floats top-right, almost invisible
+───────────────────────────────────────────────── */
+
+.mode-float {
+    position: fixed;
+    top: 18px;
+    right: 20px;
+    z-index: 400;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    opacity: var(--ui-ambient);
+    transition: opacity var(--t-base);
+}
+
+.mode-float:hover { opacity: 1; }
+
+.mf-btn {
+    padding: 5px 13px;
+    border: none;
+    background: transparent;
+    font-family: var(--font-ui);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    cursor: pointer;
+    transition: color var(--t-base);
+    position: relative;
+}
+
+/* Active indicator: thin amber underline */
+.mf-btn::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 13px;
+    right: 13px;
+    height: 1px;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity var(--t-base);
+}
+
+.mf-btn.active         { color: var(--text); }
+.mf-btn.active::after  { opacity: 1; }
+.mf-btn:hover          { color: var(--text-2); }
+.mf-btn.locked         { opacity: .2; cursor: default; font-style: italic; }
+
+.mf-sep {
+    width: 1px;
+    height: 10px;
+    background: rgba(255,255,255,.1);
+    flex-shrink: 0;
+}
+
+/* ─────────────────────────────────────────────────
+   ICON BUTTONS — thin, circular, ghost
+───────────────────────────────────────────────── */
+
+/* Large icon button (audio transport) */
+.ib {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(255,255,255,.07);
+    background: transparent;
+    color: var(--text-3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color var(--t-base), color var(--t-base);
+    flex-shrink: 0;
+}
+
+.ib:hover {
+    border-color: rgba(255,255,255,.18);
+    color: var(--text-2);
+}
+
+/* Play button — slightly larger, accent-coloured */
+.ib.play {
+    width: 32px;
+    height: 32px;
+    border-color: rgba(201,168,76,.4);
+    color: var(--accent);
+}
+
+.ib.play:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+}
+
+/* Small nav button (page navigation) */
+.nb {
+    width: 26px;
+    height: 26px;
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(255,255,255,.08);
+    background: transparent;
+    color: var(--text-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color var(--t-base), color var(--t-base);
+    flex-shrink: 0;
+}
+
+.nb:hover {
+    border-color: rgba(255,255,255,.2);
+    color: var(--text-2);
+}
+
+/* ─────────────────────────────────────────────────
+   PAGE LABEL — monospace, muted
+───────────────────────────────────────────────── */
+
+.pg-lbl {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: var(--text-3);
+    min-width: 74px;
+    text-align: center;
+    letter-spacing: .06em;
+}
+
+/* ─────────────────────────────────────────────────
+   BADGES / TAGS
+───────────────────────────────────────────────── */
+
+.badge {
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    letter-spacing: .05em;
+    white-space: nowrap;
+}
+
+.badge-outline {
+    border: 1px solid var(--border);
+    color: var(--text-3);
+}
+
+.badge-accent {
+    border: 1px solid rgba(201,168,76,.22);
+    color: rgba(201,168,76,.65);
+    background: var(--accent-dim);
+}
+
+/* Scene dot (colour indicator in cue table) */
+.c-dot {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+/* ─────────────────────────────────────────────────
+   NOW PLAYING WHISPER — top center, fades in/out
+───────────────────────────────────────────────── */
+
+.np-whisper {
+    position: fixed;
+    top: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: rgba(201,168,76,.6);
+    letter-spacing: .1em;
+    opacity: 0;
+    transition: opacity .6s ease;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 400;
+}
+
+/* ─────────────────────────────────────────────────
+   SMALL TEXT / LABELS
+───────────────────────────────────────────────── */
+
+.panel-lbl {
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: .17em;
+    color: rgba(255,255,255,.2);
+    text-transform: uppercase;
+}
+
+/* ─────────────────────────────────────────────────
+   ADD / ACTION BUTTONS (text-style, ghost)
+───────────────────────────────────────────────── */
+
+.ghost-btn {
+    font-size: 9px;
+    padding: 3px 10px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-4);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-family: var(--font-ui);
+    letter-spacing: .08em;
+    transition: border-color var(--t-base), color var(--t-base);
+}
+
+.ghost-btn:hover {
+    border-color: rgba(201,168,76,.35);
+    color: rgba(201,168,76,.7);
+}
+
+/* ─────────────────────────────────────────────────
+   COMMENT DOT — Screen mode page indicator
+───────────────────────────────────────────────── */
+
+.comment-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity var(--t-base);
+    box-shadow: 0 0 5px rgba(201,168,76,.5);
+}
+
+.comment-dot.visible { opacity: 1; }
+
+/* ─────────────────────────────────────────────────
+   COMMENT OVERLAY — M key trigger
+───────────────────────────────────────────────── */
+
+.comment-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,.45);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--t-base);
+}
+
+.comment-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.comment-box {
+    width: 340px;
+    background: rgba(12,12,12,.96);
+    border: 1px solid rgba(201,168,76,.2);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 24px 64px rgba(0,0,0,.7);
+}
+
+.comment-box-meta {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: rgba(201,168,76,.6);
+    letter-spacing: .08em;
+}
+
+.comment-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.6;
+    resize: none;
+    outline: none;
+    width: 100%;
+    padding-bottom: 8px;
+    transition: border-color var(--t-base);
+}
+
+.comment-input:focus {
+    border-bottom-color: rgba(201,168,76,.35);
+}
+
+.comment-input::placeholder {
+    color: var(--text-4);
+}
+
+.comment-box-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.cm-save-btn {
+    border-color: rgba(201,168,76,.3) !important;
+    color: rgba(201,168,76,.7) !important;
+}
+
+.cm-save-btn:hover {
+    background: var(--accent-dim) !important;
+    border-color: rgba(201,168,76,.5) !important;
+    color: var(--accent) !important;
+}
+
+/* ─────────────────────────────────────────────────
+   COMMENTS LIST — Compose right pane
+───────────────────────────────────────────────── */
+
+.comments-zone {
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 10px 16px 8px;
+    gap: 8px;
+    flex-shrink: 0;
+    height: 28%;
+    min-height: 80px;
+}
+
+.cm-scroll {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-height: 0;
+}
+
+.cm-empty {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-4);
+    padding: 8px 0;
+    letter-spacing: .04em;
+}
+
+.cm-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: start;
+    gap: 10px;
+    padding: 6px 4px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--t-fast);
+    position: relative;
+}
+
+.cm-row:hover { background: rgba(255,255,255,.02); }
+
+.cm-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.cm-page {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: rgba(201,168,76,.65);
+    letter-spacing: .05em;
+    white-space: nowrap;
+}
+
+.cm-at {
+    font-family: var(--font-mono);
+    font-size: 8.5px;
+    color: var(--text-4);
+    white-space: nowrap;
+}
+
+.cm-text {
+    font-size: 9.5px;
+    color: var(--text-3);
+    line-height: 1.55;
+    font-style: italic;
+    padding-top: 1px;
+}
+
+.cm-del {
+    background: transparent;
+    border: none;
+    color: var(--text-4);
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    opacity: 0;
+    transition: opacity var(--t-fast), color var(--t-fast);
+    flex-shrink: 0;
+}
+
+.cm-row:hover .cm-del { opacity: 1; }
+.cm-del:hover { color: rgba(255,80,80,.5); }
+
+/* ── Hover highlight system ── */
+/* Light catching the surface — ambient fill + faint outline on hover */
+
+.ib:hover,
+.nb:hover {
+    background: rgba(255,255,255,.05);
+    box-shadow: 0 0 0 1px rgba(255,255,255,.06) inset;
+}
+
+.ib.play:hover {
+    background: var(--accent-soft);
+    box-shadow: 0 0 8px rgba(201,168,76,.10) inset;
+}
+
+.mf-btn:hover {
+    background: rgba(255,255,255,.04);
+}
+
+.ghost-btn:hover {
+    background: rgba(201,168,76,.04);
+    box-shadow: 0 0 0 1px rgba(201,168,76,.1) inset;
+}
+
+.p-track:hover,
+.vol-track:hover {
+    background: rgba(255,255,255,.11);
+    box-shadow: 0 0 6px rgba(255,255,255,.04);
+}
+
+.pin:hover {
+    background: rgba(255,255,255,.05);
+    border-radius: 2px;
+    box-shadow: 0 0 4px rgba(255,255,255,.06);
+}
+
+.cm-del:hover {
+    background: rgba(255,60,60,.05);
+    border-radius: 2px;
+}

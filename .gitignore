@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Claude Code session data
+.claude/
+
+# Personal assets — drop your own files here, they won't be committed
+assets/audio/*.wav
+assets/audio/*.mp3
+assets/audio/*.ogg
+assets/audio/*.flac
+assets/audio/*.aac
+assets/audio/*.m4a
+assets/audio/*.opus
+assets/audio/*.webm
+assets/screenplay/*.pdf
+
+# Editor / OS junk
+*.swp
+*.swo
+Thumbs.db

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SLATE</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Geist+Mono:wght@300;400&display=swap" rel="stylesheet">
+
+    <!-- SLATE CSS -->
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/audio-bar.css">
+    <link rel="stylesheet" href="css/screen.css">
+    <link rel="stylesheet" href="css/compose.css">
+
+    <!-- Phase 1 → PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+    <!-- Phase 2 → Howler.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+
+    <!-- Phase 3 → Wavesurfer.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/7.8.2/wavesurfer.min.js"></script>
+</head>
+
+<!--
+    data-pdf    : path to the screenplay PDF
+    data-cues   : path to cues.json
+    data-tracks : path to tracks.json
+    Change these attributes to point at any PDF or audio set — no JS edits needed.
+-->
+<body
+    data-pdf="assets/screenplay/screenplay.pdf"
+    data-cues="cues.json"
+    data-tracks="assets/audio/tracks.json"
+>
+
+<!-- ══════════════════════════════════════════════════
+     MODE SWITCHER
+═══════════════════════════════════════════════════ -->
+<nav class="mode-float" aria-label="View mode">
+    <button class="mf-btn active" id="ms-s"
+            onclick="setMode('screen')"
+            aria-pressed="true"
+            aria-label="Switch to Screen mode">Screen</button>
+    <div class="mf-sep" role="separator"></div>
+    <button class="mf-btn" id="ms-c"
+            onclick="setMode('compose')"
+            aria-pressed="false"
+            aria-label="Switch to Compose mode">Compose</button>
+    <div class="mf-sep" role="separator"></div>
+    <button class="mf-btn locked"
+            disabled
+            aria-disabled="true"
+            aria-label="Reel mode — coming later">Reel</button>
+</nav>
+
+<!-- ══════════════════════════════════════════════════
+     NOW PLAYING WHISPER
+═══════════════════════════════════════════════════ -->
+<div class="np-whisper" id="np" role="status" aria-live="polite" aria-atomic="true"></div>
+
+
+<!-- ══════════════════════════════════════════════════
+     SCREEN MODE
+═══════════════════════════════════════════════════ -->
+<main id="screen" aria-label="Screenplay reader">
+
+    <div class="screen-scroll">
+        <div class="pdf-canvas-wrap" id="screen-pdf-wrap"
+             role="img" aria-label="Screenplay page" aria-live="polite"></div>
+    </div>
+
+    <nav class="screen-nav" aria-label="Page navigation">
+        <button class="nb" onclick="pg(-1)" aria-label="Previous page">
+            <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                <polyline points="7,1 3,5 7,9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+        <div class="pg-lbl" id="ss-lbl" role="status" aria-live="polite" aria-label="Current page">— / —</div>
+        <button class="nb" onclick="pg(1)" aria-label="Next page">
+            <svg width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                <polyline points="3,1 7,5 3,9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+        <div class="comment-dot" id="comment-dot" role="img" aria-label=""></div>
+        <button class="nb" id="fs-btn" onclick="toggleFullscreen()" aria-label="Enter fullscreen">
+            <svg class="nb-fs-enter" width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                <path d="M1,3 L1,1 L3,1 M7,1 L9,1 L9,3 M9,7 L9,9 L7,9 M3,9 L1,9 L1,7"
+                      stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <svg class="nb-fs-exit" width="9" height="9" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                <path d="M1,3 L3,3 L3,1 M7,1 L7,3 L9,3 M9,7 L7,7 L7,9 M3,9 L3,7 L1,7"
+                      stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+    </nav>
+
+</main>
+
+
+<!-- ══════════════════════════════════════════════════
+     COMPOSE MODE
+═══════════════════════════════════════════════════ -->
+<div id="compose" aria-label="Compose workspace">
+
+    <!-- Top bar -->
+    <div class="c-top">
+        <span class="wordmark" aria-hidden="true">SLATE</span>
+        <span class="c-meta" id="compose-meta-pp" aria-live="polite">—</span>
+        <div style="flex:1;"></div>
+        <span class="c-meta" id="cue-count-label" aria-live="polite">loading…</span>
+    </div>
+
+    <!-- Split pane body -->
+    <div class="c-body" id="c-body">
+
+        <!-- ── Left: Script panel ── -->
+        <div class="s-panel" id="s-panel">
+
+            <nav class="sp-nav-bar" aria-label="Page navigation">
+                <button class="nb" onclick="pg(-1)" aria-label="Previous page">
+                    <svg width="8" height="8" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                        <polyline points="7,1 3,5 7,9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <div class="pg-lbl" id="cp-lbl" role="status" aria-live="polite" aria-label="Current page">— / —</div>
+                <button class="nb" onclick="pg(1)" aria-label="Next page">
+                    <svg width="8" height="8" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                        <polyline points="3,1 7,5 3,9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </nav>
+
+            <div class="sp-scroll">
+                <div class="pdf-canvas-wrap" id="compose-pdf-wrap"
+                     role="img" aria-label="Screenplay page" aria-live="polite"></div>
+            </div>
+
+        </div>
+
+        <!-- ── Drag handle ── -->
+        <div class="d-handle" id="d-handle"
+             role="separator" aria-orientation="vertical"
+             aria-label="Resize panels" tabindex="0"></div>
+
+        <!-- ── Right pane ── -->
+        <div class="r-pane">
+
+            <!-- Waveform zone -->
+            <section class="wave-zone" aria-label="Waveform timeline">
+                <div class="z-hdr">
+                    <span class="panel-lbl">Waveform · Timeline</span>
+                    <span class="z-track" id="waveform-track-label" aria-live="polite">—</span>
+                </div>
+                <div class="wave-box" id="wave-box"
+                     role="img" aria-label="Audio waveform">
+                    <div class="pin-row"  id="pin-row"  aria-hidden="true"></div>
+                    <div class="bar-row"  id="bar-row"  aria-hidden="true"></div>
+                    <div class="playhead" id="ph"        aria-hidden="true"></div>
+                </div>
+            </section>
+
+            <!-- Cue table zone -->
+            <section class="cue-zone" aria-label="Cues and notes">
+                <div class="cz-hdr">
+                    <span class="panel-lbl">Cues · Notes</span>
+                    <button class="ghost-btn" onclick="CueEditor.exportJSON()" aria-label="Export cues as JSON">
+                        <svg width="10" height="10" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                            <line x1="7" y1="1" x2="7" y2="10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                            <polyline points="3,7 7,11 11,7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                            <line x1="2" y1="13" x2="12" y2="13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="cue-scroll">
+                    <table class="cue-table" aria-label="Music cue list">
+                        <thead>
+                            <tr>
+                                <th scope="col">Page</th>
+                                <th scope="col">Scene</th>
+                                <th scope="col">Track</th>
+                                <th scope="col">Cue In</th>
+                                <th scope="col">Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cue-tbody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Page Notes zone -->
+            <section class="comments-zone" aria-label="Page notes">
+                <div class="cz-hdr">
+                    <span class="panel-lbl">Page Notes</span>
+                    <span class="panel-lbl" id="comments-count" style="opacity:.35;" aria-live="polite"></span>
+                </div>
+                <div class="cm-scroll" id="comments-list"
+                     aria-live="polite" aria-label="Notes list"></div>
+            </section>
+
+        </div><!-- end .r-pane -->
+    </div><!-- end .c-body -->
+</div><!-- end #compose -->
+
+
+<!-- ══════════════════════════════════════════════════
+     COMMENT OVERLAY — M key
+═══════════════════════════════════════════════════ -->
+<div class="comment-overlay" id="comment-overlay"
+     role="dialog" aria-modal="true" aria-labelledby="comment-box-meta">
+    <div class="comment-box">
+        <div class="comment-box-meta" id="comment-box-meta">Note for p.1</div>
+        <label for="comment-input" class="sr-only">Note text</label>
+        <textarea class="comment-input" id="comment-input"
+                  placeholder="Type a note…" rows="3"
+                  aria-describedby="comment-box-meta"></textarea>
+        <div class="comment-box-actions">
+            <button class="ghost-btn" id="comment-cancel" aria-label="Cancel note">Cancel</button>
+            <button class="ghost-btn cm-save-btn" id="comment-save" aria-label="Save note">Save</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════
+     FLOATING AUDIO BAR
+═══════════════════════════════════════════════════ -->
+<div class="float-bar" role="region" aria-label="Audio player">
+
+    <button class="ib" onclick="prevCue()" aria-label="Previous cue">
+        <svg width="11" height="11" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <line x1="2" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            <polyline points="13,2 5,7 13,12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </button>
+
+    <button class="ib play" id="play-btn" onclick="togglePlay()"
+            aria-label="Play" aria-pressed="false">
+        <svg id="i-play" width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <polygon points="3,1.5 3,12.5 12,7" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" fill="none"/>
+        </svg>
+        <svg id="i-pause" width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true" style="display:none">
+            <line x1="4"  y1="2" x2="4"  y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="10" y1="2" x2="10" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+    </button>
+
+    <button class="ib" onclick="nextCue()" aria-label="Next cue">
+        <svg width="11" height="11" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+            <line x1="12" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            <polyline points="1,2 9,7 1,12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    </button>
+
+    <div class="t-label" id="t-label" aria-live="polite" aria-label="Now playing">—</div>
+
+    <span class="t-time cur" id="cur-t" aria-live="polite" aria-label="Current time">0:00</span>
+
+    <div class="p-track" id="p-track" onclick="scrub(event)"
+         role="slider" aria-label="Playback position"
+         aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="p-fill" id="p-fill" style="width:0%">
+            <div class="p-dot" aria-hidden="true"></div>
+        </div>
+    </div>
+
+    <span class="t-time" id="total-t" aria-label="Total duration">—</span>
+
+    <div class="vol-wrap">
+        <svg width="11" height="11" viewBox="0 0 14 14" fill="none"
+             style="color:rgba(226,221,216,.18); flex-shrink:0;"
+             aria-hidden="true">
+            <polygon points="1,5 1,9 4,9 8,12 8,2 4,5" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" fill="none"/>
+            <path d="M10 4.5 Q13 7 10 9.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+        </svg>
+        <div class="vol-track" role="slider"
+             aria-label="Volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="85">
+            <div class="vol-fill"></div>
+        </div>
+    </div>
+
+    <div class="pg-tag" id="pg-tag" aria-live="polite" aria-label="Current page">—</div>
+
+</div>
+
+
+<script src="js/pdf-engine.js"></script>
+<script src="js/audio-engine.js"></script>
+<script src="js/waveform.js"></script>
+<script src="js/cue-editor.js"></script>
+<script src="js/comments.js"></script>
+<script src="js/app.js"></script>
+
+<script>
+window.addEventListener('resize', () => Waveform.rebuild());
+</script>
+
+</body>
+</html>

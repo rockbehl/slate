@@ -1,0 +1,132 @@
+/* ─────────────────────────────────────────────────
+   SLATE — Floating Audio Bar
+   Pill shape, centered, frosted glass, always visible
+───────────────────────────────────────────────── */
+
+.float-bar {
+    position: fixed;
+    bottom: var(--bar-bottom);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 500;
+
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
+    height: var(--bar-h);
+    padding: 0 20px;
+
+    /* Frosted pill */
+    background: rgba(10,10,10,.9);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    backdrop-filter: blur(28px) saturate(160%);
+    box-shadow: var(--shadow-float);
+
+    /* Width: responsive but bounded */
+    min-width: 480px;
+    max-width: 660px;
+    width: 50vw;
+
+    white-space: nowrap;
+}
+
+/* ── Track info ── */
+.t-label {
+    font-size: 11px;
+    color: rgba(226,221,216,.45);
+    letter-spacing: .03em;
+    flex-shrink: 0;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Time display ── */
+.t-time {
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: var(--text-4);
+    flex-shrink: 0;
+    min-width: 28px;
+}
+
+.t-time.cur { color: var(--text-3); }
+
+/* ── Progress track ── */
+.p-track {
+    flex: 1;
+    height: 2px;
+    background: rgba(255,255,255,.07);
+    border-radius: 2px;
+    cursor: pointer;
+    position: relative;
+    min-width: 80px;
+    transition: background var(--t-base), box-shadow var(--t-base);
+}
+
+.p-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 0%;   /* set by JS */
+    background: var(--accent);
+    border-radius: 2px;
+    pointer-events: none;
+    transition: width .1s linear;
+}
+
+/* Scrub dot — appears on hover */
+.p-dot {
+    position: absolute;
+    right: -4px;
+    top: -4px;
+    width: 10px;
+    height: 10px;
+    background: var(--accent);
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity var(--t-fast);
+    box-shadow: 0 0 6px rgba(201,168,76,.4);
+}
+
+.p-track:hover .p-dot { opacity: 1; }
+
+/* ── Volume ── */
+.vol-wrap {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+}
+
+.vol-track {
+    width: 56px;
+    height: 2px;
+    background: rgba(255,255,255,.07);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background var(--t-base), box-shadow var(--t-base);
+}
+
+.vol-fill {
+    height: 100%;
+    width: 0%;   /* set by initVolumeSlider() in app.js */
+    background: rgba(255,255,255,.2);
+    border-radius: 2px;
+}
+
+/* Audio error state */
+.t-label[data-error] {
+    color: rgba(255,80,80,.35);
+    font-style: italic;
+}
+
+/* ── Page tag ── */
+.pg-tag {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: rgba(201,168,76,.5);
+    letter-spacing: .06em;
+    flex-shrink: 0;
+}

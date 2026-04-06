@@ -1,0 +1,92 @@
+/* ─────────────────────────────────────────────────
+   SLATE — Screen Mode
+   Full-focus, minimal, scrollable screenplay
+───────────────────────────────────────────────── */
+
+#screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    /* Clear the floating bar */
+    padding-bottom: calc(var(--bar-h) + var(--bar-bottom) + 16px);
+
+    opacity: 1;
+    transition: opacity var(--t-slow), transform var(--t-slow);
+}
+
+/* Hidden state — when switching to compose */
+#screen.off {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(.982);
+}
+
+/* ── Scrollable screenplay container ── */
+.screen-scroll {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 32px 20px 16px;
+    scroll-behavior: smooth;
+}
+
+/* The screenplay page in screen mode */
+#screen .page-sheet {
+    width: 510px;
+    flex-shrink: 0;
+    align-self: flex-start;
+}
+
+/*
+   Phase 1: PDF canvas will go inside .screen-scroll
+   wrapped in .pdf-canvas-wrap (defined in base.css).
+   Canvas width should be set to ~510px to match the
+   current page-sheet width.
+*/
+
+/* ── Ghost navigation below the page ── */
+.screen-nav {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 0 8px;
+    flex-shrink: 0;
+
+    /* Ambient opacity — rises on hover */
+    opacity: .3;
+    transition: opacity var(--t-base);
+}
+
+.screen-nav:hover { opacity: 1; }
+
+/* Page label in screen nav */
+.screen-nav .pg-lbl {
+    min-width: 64px;
+}
+
+/* ── Fullscreen ── */
+:fullscreen::backdrop,
+:-webkit-full-screen::backdrop {
+    background: #070707;
+}
+
+/* Mode switcher fades out in fullscreen — reappears on hover */
+body.fullscreen .mode-float {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--t-base);
+}
+body.fullscreen .mode-float:hover {
+    opacity: var(--ui-ambient);
+    pointer-events: all;
+}
+
+/* Fullscreen button icon swap (CSS-only, driven by body.fullscreen) */
+.nb-fs-exit               { display: none; }
+body.fullscreen .nb-fs-enter { display: none; }
+body.fullscreen .nb-fs-exit  { display: flex; align-items: center; }
