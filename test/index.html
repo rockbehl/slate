@@ -250,7 +250,7 @@ describe('CueEditor · _sceneForPage', () => {
     it('page 100 → null',() => expect(_sceneForPage(100)).toBeFalsy());
 });
 
-/* ── REGRESSIONS ── */
+/* ── REGRESSIONS + BUG FIXES ── */
 describe('Regressions', () => {
     it('empty array [] is truthy — guard prevents cue wipe', () => {
         const parsed = { cues: [], scenes: [] };
@@ -263,6 +263,26 @@ describe('Regressions', () => {
          'CONTINUED','MORE','COLD OPEN','OVER BLACK','TITLE CARD'].forEach(t => {
             if (!CHAR_BLACKLIST.has(t)) throw new Error(`Missing: "${t}"`);
         });
+    });
+    it('item.str guard — TextMarkedContent objects (no .str) are skipped', () => {
+        // PDF.js 3.x can return items without .str; must not throw
+        const mixed = [
+            { str: 'Hello', transform: [12,0,0,12, 70, 700] },
+            { type: 'beginMarkedContent', tag: 'Artifact' },  // no .str
+            { str: ' world', transform: [12,0,0,12,120, 700] },
+        ];
+        let threw = false;
+        try { _itemsToLines(mixed); } catch(_) { threw = true; }
+        expect(threw).toBeFalsy();
+    });
+    it('item.str guard — produces correct output despite mixed items', () => {
+        const mixed = [
+            { str: 'INT. OFFICE', transform: [12,0,0,12, 70, 700] },
+            { type: 'beginMarkedContent' },
+        ];
+        const lines = _itemsToLines(mixed);
+        expect(lines).toHaveLength(1);
+        expect(lines[0].text).toBe('INT. OFFICE');
     });
 });
 

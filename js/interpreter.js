@@ -108,7 +108,8 @@ const Interpreter = (() => {
     ───────────────────────────────────────── */
     async function _extractPage(pdfDoc, pageNum) {
         const page    = await pdfDoc.getPage(pageNum);
-        const content = await page.getTextContent({ normalizeWhitespace: true });
+        // normalizeWhitespace was removed in PDF.js 3.x; don't pass it
+        const content = await page.getTextContent();
         return content.items;
     }
 
@@ -116,7 +117,8 @@ const Interpreter = (() => {
         // Group items by Y (rounded to 1pt) to reconstruct split text on the same line
         const byY = new Map();
         for (const item of items) {
-            if (!item.str.trim()) continue;
+            // PDF.js 3.x items array can contain TextMarkedContent objects with no .str
+            if (!item.str || !item.str.trim()) continue;
             const y = Math.round(item.transform[5]);
             if (!byY.has(y)) byY.set(y, []);
             byY.get(y).push(item);
@@ -256,13 +258,15 @@ const Interpreter = (() => {
         console.log(`SLATE Interpreter: parsing ${numPages} pages…`);
 
         // ── Scanned PDF check — sample pages 1-3 ──
+        // Threshold is 5 (not 10) because page 1 is often a sparse title page
         const samplePages = await Promise.all(
             [1, Math.min(2, numPages), Math.min(3, numPages)]
                 .filter((p, i, a) => a.indexOf(p) === i)  // dedupe for short docs
                 .map(p => _extractPage(pdfDoc, p))
         );
-        const sampleCount = samplePages.reduce((n, items) => n + items.filter(i => i.str.trim()).length, 0);
-        if (sampleCount < 10) {
+        const sampleCount = samplePages.reduce((n, items) => n + items.filter(i => i.str && i.str.trim()).length, 0);
+        console.log(`SLATE Interpreter: sample text items across pages 1-3 = ${sampleCount}`);
+        if (sampleCount < 5) {
             const result = {
                 error:        'no-text',
                 source:       url.split('/').pop(),
@@ -309,9 +313,17 @@ const Interpreter = (() => {
 
         // ── Cache ──
         await _cacheSet(key, result);
+        if (parsed.scenes.length === 0) {
+            console.warn(
+                'SLATE Interpreter: parsed OK but found 0 scenes. ' +
+                'Call Interpreter.diagnoseRaw(1) in the console to inspect page 1 ' +
+                'with x-coordinates — the X thresholds may need tuning for this PDF.'
+            );
+        }
         console.log(
             `SLATE Interpreter: done — ${parsed.scenes.length} scenes, ` +
-            `${parsed.characters.length} characters. Cached as "${key}".`
+            `${parsed.characters.length} characters, ` +
+            `${parsed.suggestedCues.length} suggested cues. Cached as "${key}".`
         );
 
         if (typeof STATE !== 'undefined') STATE.interpreterData = result;
@@ -362,11 +374,55 @@ const Interpreter = (() => {
         } catch (_) {}
     }
 
+    /* ─────────────────────────────────────────
+       DIAGNOSTICS
+       Call from browser console while app is running.
+    ───────────────────────────────────────── */
+
+    // diagnose() — summary of whatever is in STATE.interpreterData right now
+    function diagnose() {
+        const d = (typeof STATE !== 'undefined') ? STATE.interpreterData : null;
+        if (!d) { console.warn('Interpreter.diagnose(): no data yet — load a PDF first'); return null; }
+        if (d.error) { console.error('Interpreter error:', d.error, d); return d; }
+
+        console.group(`SLATE Interpreter — ${d.source} (${d.totalPages} pp)`);
+        console.log(`Parsed at: ${d.parsedAt}`);
+        console.log(`Scenes (${d.scenes.length}):`, d.scenes.map(s => `p${s.pageStart} ${s.heading}`));
+        console.log(`Characters (${d.characters.length}):`, d.characters);
+        console.log(`Transitions (${d.transitions.length}):`, d.transitions.map(t => `p${t.page} ${t.text}`));
+        console.log(`Suggested cues (${d.suggestedCues.length}):`, d.suggestedCues.map(c => `p${c.page} "${c.scene}"`));
+        console.groupEnd();
+        return d;
+    }
+
+    // diagnoseRaw(pageNum) — extract + classify every line on a page,
+    // print with x/y coords so X thresholds can be tuned if needed.
+    async function diagnoseRaw(pageNum) {
+        pageNum = pageNum || 1;
+        const pdfDoc = (typeof PDFEngine !== 'undefined') ? PDFEngine.getPdfDoc() : null;
+        if (!pdfDoc) { console.warn('Interpreter.diagnoseRaw(): PDF not loaded'); return; }
+
+        const items = await _extractPage(pdfDoc, pageNum);
+        const lines = _itemsToLines(items);
+
+        console.group(`SLATE Interpreter — raw page ${pageNum} (${items.length} items → ${lines.length} lines)`);
+        console.log('X thresholds:', X);
+        console.log('');
+        lines.forEach(l => {
+            const type  = _classify(l);
+            const xStr  = String(Math.round(l.x)).padStart(4);
+            const tStr  = type.padEnd(14);
+            const text  = l.text.length > 80 ? l.text.slice(0, 77) + '…' : l.text;
+            console.log(`[${tStr}] x=${xStr}  "${text}"`);
+        });
+        console.groupEnd();
+    }
+
     // Expose internals when running under the test harness — never in normal use
     const _testAPI = (typeof module !== 'undefined' || (typeof __SLATE_TEST__ !== 'undefined' && __SLATE_TEST__))
         ? { _classify, _itemsToLines, _cacheKey, X, SCENE_RE, TRANSITION_RE, CHAR_BLACKLIST }
         : null;
 
-    return { analyze, getCache, clearCache, clearAll, _testAPI };
+    return { analyze, getCache, clearCache, clearAll, diagnose, diagnoseRaw, _testAPI };
 
 })();
