@@ -56,6 +56,14 @@ const Interpreter = (() => {
     const TRANSITION_RE = /^(FADE\s+IN[:.!]?|FADE\s+OUT[:.!]?|CUT\s+TO:|DISSOLVE\s+TO:|SMASH\s+CUT|MATCH\s+CUT|TITLE\s+CARD:|SUPER\s*:|BACK\s+TO:|CONTINUOUS[.:]?)/i;
     const VOICE_RE      = /\s*\((V\.O\.|O\.S\.|O\.C\.|CONT'D|CONT|MOS|PRE-LAP)\)\s*$/i;
 
+    // All-caps lines that look like character names but aren't
+    const CHAR_BLACKLIST = new Set([
+        'ACT ONE','ACT TWO','ACT THREE','ACT FOUR','ACT FIVE',
+        'THE END','FADE IN','FADE OUT','CONTINUED','MORE',
+        'OVER BLACK','TITLE CARD','SMASH CUT','CUT TO BLACK',
+        'END OF PILOT','END OF EPISODE','COLD OPEN','TAG',
+    ]);
+
     /* ─────────────────────────────────────────
        INDEXEDDB
     ───────────────────────────────────────── */
@@ -116,11 +124,11 @@ const Interpreter = (() => {
     }
 
     function _itemsToLines(items) {
-        // Group items by Y (rounded to 2pt) to reconstruct split text on the same line
+        // Group items by Y (rounded to 1pt) to reconstruct split text on the same line
         const byY = new Map();
         for (const item of items) {
             if (!item.str.trim()) continue;
-            const y = Math.round(item.transform[5] / 2) * 2;
+            const y = Math.round(item.transform[5]);
             if (!byY.has(y)) byY.set(y, []);
             byY.get(y).push(item);
         }
@@ -148,7 +156,7 @@ const Interpreter = (() => {
 
         if (SCENE_RE.test(t))                                              return 'scene';
         if (TRANSITION_RE.test(t))                                         return 'transition';
-        if (isAllCaps && x >= X.CHAR_MIN && x <= X.CHAR_MAX && t.length <= 50) return 'character';
+        if (isAllCaps && x >= X.CHAR_MIN && x <= X.CHAR_MAX && t.length <= 50 && !CHAR_BLACKLIST.has(t)) return 'character';
         if (t.startsWith('(') && x >= X.PAREN_MIN && x <= X.PAREN_MAX)    return 'parenthetical';
         if (x > X.DIALOG_MIN && x <= X.DIALOG_MAX)                        return 'dialog';
         return 'action';
@@ -206,8 +214,8 @@ const Interpreter = (() => {
                 }
 
                 // Extend current scene's page range
-                if (currentScene && pageNum > currentScene.pageEnd) {
-                    currentScene.pageEnd = pageNum;
+                if (currentScene) {
+                    currentScene.pageEnd = Math.max(currentScene.pageEnd, pageNum);
                 }
             }
 
@@ -255,14 +263,24 @@ const Interpreter = (() => {
 
         console.log(`SLATE Interpreter: parsing ${numPages} pages…`);
 
-        // ── Scanned PDF check — sample page 1 ──
-        const sampleItems = await _extractPage(pdfDoc, 1);
-        if (sampleItems.filter(i => i.str.trim()).length < 5) {
+        // ── Scanned PDF check — sample pages 1-3 ──
+        const samplePages = await Promise.all(
+            [1, Math.min(2, numPages), Math.min(3, numPages)]
+                .filter((p, i, a) => a.indexOf(p) === i)  // dedupe for short docs
+                .map(p => _extractPage(pdfDoc, p))
+        );
+        const sampleCount = samplePages.reduce((n, items) => n + items.filter(i => i.str.trim()).length, 0);
+        if (sampleCount < 10) {
             const result = {
-                error:     'no-text',
-                source:    url.split('/').pop(),
-                parsedAt:  new Date().toISOString(),
-                totalPages: numPages,
+                error:        'no-text',
+                source:       url.split('/').pop(),
+                parsedAt:     new Date().toISOString(),
+                totalPages:   numPages,
+                scenes:       [],
+                characters:   [],
+                transitions:  [],
+                pageMap:      {},
+                suggestedCues:[],
             };
             console.warn('SLATE Interpreter: PDF appears to be a scanned image — no extractable text');
             if (typeof STATE !== 'undefined') STATE.interpreterData = result;
@@ -321,6 +339,7 @@ const Interpreter = (() => {
                 req.onsuccess = e => {
                     const cursor = e.target.result;
                     if (cursor) {
+                        // Collect last match — most recently written entry wins
                         if (String(cursor.key).startsWith(filename)) found = cursor.value;
                         cursor.continue();
                     } else {
