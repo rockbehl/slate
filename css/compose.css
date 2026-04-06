@@ -314,6 +314,48 @@
 
 .cz-hdr:hover { opacity: 1; }
 
+/* Button group — keeps action buttons together on the right */
+.cz-btn-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Suggest button — label + icon side-by-side */
+.suggest-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.suggest-lbl {
+    font-size: 8px;
+    letter-spacing: .08em;
+    font-family: var(--font-ui);
+}
+
+/* State: idle (no PDF parsed yet) — slightly dimmer */
+.suggest-btn[data-state="idle"] { opacity: .6; }
+
+/* State: ready — amber accent so it's clearly clickable */
+.suggest-btn[data-state="ready"] {
+    border-color: rgba(201,168,76,.4);
+    color: rgba(201,168,76,.8);
+    opacity: 1;
+}
+
+/* State: waiting (clicked before ready) */
+.suggest-btn[data-state="waiting"] {
+    opacity: .5;
+    cursor: wait;
+}
+
+/* State: error */
+.suggest-btn[data-state="error"] {
+    opacity: .4;
+    cursor: not-allowed;
+}
+
 /* Scrollable cue table */
 .cue-scroll {
     flex: 1;

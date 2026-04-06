@@ -258,6 +258,9 @@ const Interpreter = (() => {
         if (cached) {
             console.log(`SLATE Interpreter: cache hit — "${key}"`);
             if (typeof STATE !== 'undefined') STATE.interpreterData = cached;
+            if (typeof CueEditor !== 'undefined' && typeof CueEditor.onInterpreterReady === 'function') {
+                CueEditor.onInterpreterReady(cached);
+            }
             return cached;
         }
 
@@ -323,6 +326,12 @@ const Interpreter = (() => {
         );
 
         if (typeof STATE !== 'undefined') STATE.interpreterData = result;
+
+        // Notify CueEditor so the Suggest button can update its ready state
+        if (typeof CueEditor !== 'undefined' && typeof CueEditor.onInterpreterReady === 'function') {
+            CueEditor.onInterpreterReady(result);
+        }
+
         return result;
     }
 

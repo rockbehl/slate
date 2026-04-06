@@ -18,6 +18,7 @@
 const CueEditor = (() => {
 
     const STORAGE_KEY = 'slate_cues';
+    let _pendingSuggest = false;
 
     /* ─────────────────────────────────────────
        INIT — call after cues + scenes loaded
@@ -184,23 +185,54 @@ const CueEditor = (() => {
     }
 
     /* ─────────────────────────────────────────
+       INTERPRETER READY HOOK
+       Called by interpreter.js when analysis completes.
+    ───────────────────────────────────────── */
+    function onInterpreterReady(data) {
+        const btn = document.getElementById('suggest-btn');
+        if (!btn) return;
+
+        if (data.error === 'no-text') {
+            btn.dataset.state = 'error';
+            btn.setAttribute('title', 'PDF has no text layer — cannot suggest');
+            btn.querySelector('.suggest-lbl').textContent = 'No text';
+            return;
+        }
+
+        const count = (data.suggestedCues || []).length;
+        btn.dataset.state = 'ready';
+        btn.setAttribute('title', `${count} scenes detected — click to load`);
+        btn.querySelector('.suggest-lbl').textContent = `Suggest (${count})`;
+
+        // If the user already clicked Suggest before we were ready, fire now
+        if (_pendingSuggest) {
+            _pendingSuggest = false;
+            suggestCues();
+        }
+    }
+
+    /* ─────────────────────────────────────────
        SUGGEST CUES — import interpreter stubs
     ───────────────────────────────────────── */
     function suggestCues() {
         const data = STATE.interpreterData;
 
         if (!data) {
-            _flashStatus('Still analyzing PDF…');
+            // Interpreter still running — queue a retry once it finishes
+            const btn = document.getElementById('suggest-btn');
+            if (btn) { btn.dataset.state = 'waiting'; btn.querySelector('.suggest-lbl').textContent = 'Analyzing…'; }
+            _pendingSuggest = true;
+            if (typeof showNowPlaying === 'function') showNowPlaying('Analyzing screenplay — will suggest when ready');
             return;
         }
         if (data.error === 'no-text') {
-            _flashStatus('PDF has no text layer — cannot suggest');
+            if (typeof showNowPlaying === 'function') showNowPlaying('PDF has no text layer — cannot suggest cues');
             return;
         }
 
         const suggested = data.suggestedCues || [];
         if (!suggested.length) {
-            _flashStatus('No scenes detected in PDF');
+            if (typeof showNowPlaying === 'function') showNowPlaying('No scenes detected in this PDF');
             return;
         }
 
@@ -212,7 +244,7 @@ const CueEditor = (() => {
         _syncCountLabel();
 
         if (typeof showNowPlaying === 'function') {
-            showNowPlaying(`${suggested.length} cues suggested`);
+            showNowPlaying(`${suggested.length} scene cues loaded`);
         }
     }
 
@@ -300,6 +332,6 @@ const CueEditor = (() => {
     }
 
     /* Public API */
-    return { init, render, setActive, save, exportJSON, suggestCues };
+    return { init, render, setActive, save, exportJSON, suggestCues, onInterpreterReady };
 
 })();
