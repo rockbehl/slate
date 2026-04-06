@@ -54,9 +54,12 @@ const PDFEngine = (() => {
 
             // Kick off interpreter non-blocking — doesn't affect render
             if (typeof Interpreter !== 'undefined') {
+                console.log('SLATE PDFEngine: handing off to Interpreter…');
                 Interpreter.analyze(url, _pdfDoc).catch(e =>
                     console.warn('SLATE Interpreter: analysis failed', e)
                 );
+            } else {
+                console.warn('SLATE PDFEngine: Interpreter not loaded — check script order');
             }
         } catch (err) {
             console.error('SLATE PDFEngine: failed to load PDF', err);
