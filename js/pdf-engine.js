@@ -51,6 +51,13 @@ const PDFEngine = (() => {
             if (typeof updatePageLabels === 'function') updatePageLabels();
 
             await renderPage(1);
+
+            // Kick off interpreter non-blocking — doesn't affect render
+            if (typeof Interpreter !== 'undefined') {
+                Interpreter.analyze(url, _pdfDoc).catch(e =>
+                    console.warn('SLATE Interpreter: analysis failed', e)
+                );
+            }
         } catch (err) {
             console.error('SLATE PDFEngine: failed to load PDF', err);
             _showError('Could not load screenplay.pdf — check assets/screenplay/ folder');
@@ -160,6 +167,6 @@ const PDFEngine = (() => {
         });
     }
 
-    return { load, renderPage };
+    return { load, renderPage, getPdfDoc: () => _pdfDoc };
 
 })();

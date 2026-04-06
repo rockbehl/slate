@@ -35,10 +35,11 @@ const STATE = {
     totalPages:  null,      // set by pdf-engine after load; null until then
     playing:     false,
     progress:    0,         // 0–100 (audio progress %)
-    currentCue:  null,      // index into STATE.cues
-    cues:        [],        // loaded from cues.json → cues[]
-    scenes:      [],        // loaded from cues.json → scenes[]
-    tracks:      [],        // loaded from tracks.json by AudioEngine
+    currentCue:      null,  // index into STATE.cues
+    cues:            [],    // loaded from cues.json → cues[]
+    scenes:          [],    // loaded from cues.json → scenes[]
+    tracks:          [],    // loaded from tracks.json by AudioEngine
+    interpreterData: null,  // set by Interpreter.analyze() after PDF is parsed
 };
 
 /* ═══════════════════════════════════════════════
