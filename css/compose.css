@@ -369,3 +369,34 @@
 
 /* Mono values (timestamps) */
 .mono { font-family: var(--font-mono); }
+
+/* Empty state row */
+.cue-empty {
+    color: var(--text-4);
+    font-style: italic;
+    font-size: 9.5px;
+    padding: 16px 7px !important;
+    text-align: center;
+    cursor: default !important;
+}
+
+/* Delete column — hidden until row hovered */
+.del-td {
+    width: 16px;
+    padding: 7px 4px !important;
+    opacity: 0;
+    transition: opacity var(--t-base);
+}
+.cue-table tr:hover .del-td { opacity: 1; }
+
+.cm-del {
+    background: none;
+    border: none;
+    color: rgba(255,80,80,.45);
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 2px;
+    transition: color var(--t-base);
+}
+.cm-del:hover { color: rgba(255,80,80,.85); }

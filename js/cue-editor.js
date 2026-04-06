@@ -4,10 +4,10 @@
 
    FEATURES:
      - Render cue rows from STATE.cues + STATE.scenes
-     - Highlight the active cue (currently playing)
+     - Highlight + scroll-to the active cue (currently playing)
      - Click a row to jump to that page + audio position
      - Inline note editing (click note cell to edit)
-     - Add Cue button → inline form
+     - Suggest Cues button → imports interpreter's scene stubs
      - Delete cue (hover row to reveal delete icon)
      - Save changes to localStorage (no backend needed)
      - Export cues.json button (downloads the current cue list)
@@ -23,20 +23,20 @@ const CueEditor = (() => {
        INIT — call after cues + scenes loaded
     ───────────────────────────────────────── */
     function init() {
-        // Try restoring saved cues from localStorage
+        // Restore saved cues from localStorage — only when non-empty,
+        // so an empty saved list never silently wipes the loaded cues.
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
-                STATE.cues   = parsed.cues   || STATE.cues;
-                STATE.scenes = parsed.scenes || STATE.scenes;
+                if (Array.isArray(parsed.cues)   && parsed.cues.length   > 0) STATE.cues   = parsed.cues;
+                if (Array.isArray(parsed.scenes) && parsed.scenes.length > 0) STATE.scenes = parsed.scenes;
             } catch (e) {
                 console.warn('SLATE CueEditor: could not parse saved cues', e);
             }
         }
 
         render();
-        _bindAddButton();
     }
 
     /* ─────────────────────────────────────────
@@ -48,48 +48,64 @@ const CueEditor = (() => {
 
         tbody.innerHTML = '';
 
+        if (!STATE.cues.length) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td colspan="5" class="cue-empty">No cues — click <em>Suggest</em> to generate from screenplay, or edit cues.json.</td>`;
+            tbody.appendChild(tr);
+            return;
+        }
+
         STATE.cues.forEach((cue, idx) => {
-            const scene = _sceneForPage(cue.page);
+            const scene    = _sceneForPage(cue.page);
             const isActive = STATE.currentCue === idx;
 
             const tr = document.createElement('tr');
-            tr.className = isActive ? 'active' : '';
+            tr.className   = isActive ? 'active' : '';
             tr.dataset.idx = idx;
 
-            tr.innerHTML = `
-                <td>
-                    <span class="c-dot" style="background:${scene?.color || '#555'};"></span>${cue.page}
-                </td>
-                <td>${cue.scene || '—'}</td>
-                <td>${cue.track ? _trackLabel(cue.track) : '<span class="tbd">— not set</span>'}</td>
-                <td class="mono">${_formatTime(cue.at)}</td>
-                <td class="note-td" data-field="note" data-idx="${idx}">${cue.note || '<span class="tbd">—</span>'}</td>
-            `;
+            // Build cells safely — no innerHTML with user data
+            tr.appendChild(_cell(`<span class="c-dot" style="background:${_esc(scene?.color || '#555')};"></span>${cue.page}`));
+            tr.appendChild(_cell(_esc(cue.scene || '—')));
+            tr.appendChild(_cell(cue.track
+                ? _esc(_trackLabel(cue.track))
+                : '<span class="tbd">— not set</span>'
+            ));
+            tr.appendChild(_monoCell(_formatTime(cue.at)));
 
-            // Click row → jump to page + audio position
+            const noteCell = _noteCell(cue, idx);
+            tr.appendChild(noteCell);
+
+            // Delete button — only visible on hover via CSS
+            const delCell = document.createElement('td');
+            delCell.className = 'del-td';
+            const delBtn = document.createElement('button');
+            delBtn.className  = 'cm-del';
+            delBtn.textContent = '×';
+            delBtn.setAttribute('aria-label', `Delete cue on page ${cue.page}`);
+            delBtn.addEventListener('click', e => { e.stopPropagation(); _deleteCue(idx); });
+            delCell.appendChild(delBtn);
+            tr.appendChild(delCell);
+
+            // Row click → jump to page + audio
             tr.addEventListener('click', e => {
-                // Don't jump if they're clicking the note to edit
-                if (e.target.dataset.field === 'note') return;
+                if (e.target.closest('[data-field="note"]') || e.target.closest('.cm-del')) return;
                 if (typeof goToPage === 'function') goToPage(cue.page);
                 if (typeof AudioEngine !== 'undefined') AudioEngine.seekToCue(cue.page);
                 STATE.currentCue = idx;
                 _refreshActiveRow();
             });
 
-            // Note cell: click to edit inline
-            const noteCell = tr.querySelector('[data-field="note"]');
-            noteCell.addEventListener('click', () => _editNote(noteCell, idx));
-
             tbody.appendChild(tr);
         });
     }
 
     /* ─────────────────────────────────────────
-       HIGHLIGHT ACTIVE ROW
+       HIGHLIGHT + SCROLL ACTIVE ROW
     ───────────────────────────────────────── */
     function setActive(cueIdx) {
         STATE.currentCue = cueIdx;
         _refreshActiveRow();
+        _scrollToActive();
     }
 
     function _refreshActiveRow() {
@@ -98,9 +114,27 @@ const CueEditor = (() => {
         });
     }
 
+    function _scrollToActive() {
+        const tbody = document.getElementById('cue-tbody');
+        if (!tbody) return;
+        const active = tbody.querySelector('tr.active');
+        if (active) active.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
     /* ─────────────────────────────────────────
        INLINE NOTE EDITING
     ───────────────────────────────────────── */
+    function _noteCell(cue, idx) {
+        const td = document.createElement('td');
+        td.className = 'note-td';
+        td.dataset.field = 'note';
+        td.dataset.idx   = idx;
+        td.innerHTML = cue.note ? _esc(cue.note) : '<span class="tbd">—</span>';
+
+        td.addEventListener('click', () => _editNote(td, idx));
+        return td;
+    }
+
     function _editNote(cell, idx) {
         const current = STATE.cues[idx].note || '';
         cell.innerHTML = '';
@@ -130,14 +164,8 @@ const CueEditor = (() => {
         });
 
         input.addEventListener('keydown', e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                input.blur();
-            }
-            if (e.key === 'Escape') {
-                input.value = current;
-                input.blur();
-            }
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); input.blur(); }
+            if (e.key === 'Escape') { input.value = current; input.blur(); }
         });
 
         cell.appendChild(input);
@@ -145,28 +173,47 @@ const CueEditor = (() => {
     }
 
     /* ─────────────────────────────────────────
-       ADD CUE
+       DELETE CUE
     ───────────────────────────────────────── */
-    function _bindAddButton() {
-        // Add Cue button intentionally removed from UI — cues are managed via cues.json
-    }
-
-    function addCue() {
-        const newCue = {
-            page:  STATE.currentPage,
-            track: '',
-            at:    0,
-            note:  '',
-        };
-        STATE.cues.push(newCue);
-        // Sort by page
-        STATE.cues.sort((a, b) => a.page - b.page);
+    function _deleteCue(idx) {
+        STATE.cues.splice(idx, 1);
+        if (STATE.currentCue >= STATE.cues.length) STATE.currentCue = null;
         save();
         render();
+        _syncCountLabel();
+    }
 
-        // Scroll to new row
-        const tbody = document.getElementById('cue-tbody');
-        if (tbody) tbody.lastElementChild?.scrollIntoView({ behavior: 'smooth' });
+    /* ─────────────────────────────────────────
+       SUGGEST CUES — import interpreter stubs
+    ───────────────────────────────────────── */
+    function suggestCues() {
+        const data = STATE.interpreterData;
+
+        if (!data) {
+            _flashStatus('Still analyzing PDF…');
+            return;
+        }
+        if (data.error === 'no-text') {
+            _flashStatus('PDF has no text layer — cannot suggest');
+            return;
+        }
+
+        const suggested = data.suggestedCues || [];
+        if (!suggested.length) {
+            _flashStatus('No scenes detected in PDF');
+            return;
+        }
+
+        // Deep-copy so edits don't mutate interpreter data
+        STATE.cues = suggested.map(c => ({ ...c }));
+        STATE.currentCue = null;
+        save();
+        render();
+        _syncCountLabel();
+
+        if (typeof showNowPlaying === 'function') {
+            showNowPlaying(`${suggested.length} cues suggested`);
+        }
     }
 
     /* ─────────────────────────────────────────
@@ -205,7 +252,7 @@ const CueEditor = (() => {
     }
 
     function _trackLabel(id) {
-        if (!id) return null;
+        if (!id) return '';
         const meta = (STATE.tracks || []).find(t => t.id === id);
         return meta ? (meta.title || meta.id) : id;
     }
@@ -217,22 +264,42 @@ const CueEditor = (() => {
         return `${m}:${String(s).padStart(2, '0')}`;
     }
 
+    // Escape HTML for safe innerHTML insertion
+    function _esc(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function _cell(html) {
+        const td = document.createElement('td');
+        td.innerHTML = html;
+        return td;
+    }
+
+    function _monoCell(text) {
+        const td = document.createElement('td');
+        td.className = 'mono';
+        td.textContent = text;
+        return td;
+    }
+
+    function _syncCountLabel() {
+        const el = document.getElementById('cue-count-label');
+        if (el) el.textContent = `${STATE.cues.length} cue${STATE.cues.length !== 1 ? 's' : ''}`;
+    }
+
+    function _flashStatus(msg) {
+        const el = document.querySelector('.cue-zone .panel-lbl');
+        if (!el) return;
+        const orig = el.textContent;
+        el.textContent = msg;
+        setTimeout(() => { el.textContent = orig; }, 2200);
+    }
+
     /* Public API */
-    return { init, render, setActive, addCue, save, exportJSON };
+    return { init, render, setActive, save, exportJSON, suggestCues };
 
 })();
-
-/*
-   ─────────────────────────────────────────────
-   TODO Phase 3 — wire up in app.js:
-
-   In loadCues().then():
-     CueEditor.init();
-
-   In AudioEngine._checkCues() when a cue fires:
-     CueEditor.setActive(i);
-
-   Add export button to index.html toolbar:
-     <button class="ghost-btn" onclick="CueEditor.exportJSON()">Export JSON</button>
-   ─────────────────────────────────────────────
-*/
