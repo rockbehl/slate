@@ -49,6 +49,9 @@ const AudioEngine = (() => {
             console.warn(`SLATE AudioEngine: could not load ${url} — no audio will play`);
             const label = document.getElementById('t-label');
             if (label) { label.textContent = 'no audio'; label.dataset.error = '1'; }
+            // Surface a persistent visual error in the waveform zone
+            const waveBox = document.getElementById('wave-box');
+            if (waveBox) waveBox.classList.add('audio-error');
             return;
         }
 
@@ -231,7 +234,40 @@ const AudioEngine = (() => {
         if (wfLabel) wfLabel.textContent = label;
     }
 
+    /* ─────────────────────────────────────────
+       BUNDLE PATCH — called by bundle-loader
+       Skips tracks.json fetch; builds Howl instances
+       from pre-fetched blob: URLs in the patched tracks array.
+    ───────────────────────────────────────── */
+    function _patchTracksFromBundle(patchedTracks) {
+        if (!Array.isArray(patchedTracks) || !patchedTracks.length) return;
+
+        if (typeof STATE !== 'undefined') STATE.tracks = patchedTracks;
+
+        patchedTracks.forEach(t => {
+            if (!t.id || !t.file) return;
+            // t.file is already a blob: URL from bundle-loader
+            const src = t.file;
+            // Derive a format hint from original filename stored in t.originalFile,
+            // or fall back to 'mp3' (Howler handles most formats anyway)
+            const ext = (t.originalFile || '').split('.').pop().toLowerCase() || 'mp3';
+            _sounds[t.id] = {
+                howl: new Howl({
+                    src:         [src],
+                    format:      [ext],
+                    html5:       true,
+                    volume:      0.85,
+                    onloaderror: (_, err) => console.warn(`SLATE: failed to load bundle audio "${t.id}"`, err),
+                }),
+                meta: t,
+            };
+        });
+
+        const ids = Object.keys(_sounds);
+        if (ids.length === 1) _defaultId = ids[0];
+    }
+
     /* Public API */
-    return { init, play, pause, toggle, seekTo, seekToCue, setVolume, setAutoAdvance, isPlaying, getDuration };
+    return { init, play, pause, toggle, seekTo, seekToCue, setVolume, setAutoAdvance, isPlaying, getDuration, _patchTracksFromBundle };
 
 })();

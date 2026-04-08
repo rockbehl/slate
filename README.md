@@ -12,11 +12,13 @@ SLATE has two modes:
 
 **Screen** — Full-focus reader. One page at a time, nothing else visible. Audio plays underneath. Press `→` / `←` to turn pages, `Space` to play/pause, `F` for fullscreen, `M` to leave a note.
 
-**Compose** — Split workspace. Screenplay on the left, waveform timeline + cue table + page notes on the right. Drag the divider. Click a waveform position to seek. Edit cue notes inline. Export the cue list as JSON.
+**Compose** — Split workspace. Screenplay on the left, waveform timeline + cue table + page notes on the right. Drag the divider. Click a cue row to jump to that page. Edit notes, track assignments, and timestamps inline. Export the cue list as JSON or as a portable `.cues` bundle.
 
 ---
 
 ## Setup
+
+### Option A — Manual (individual files)
 
 **1. Add your files**
 
@@ -75,6 +77,34 @@ python3 -m http.server 8000
 
 ---
 
+### Option B — `.cues` bundle
+
+A `.cues` file packages everything into one portable ZIP: screenplay, audio, and cues.
+
+**To open a bundle:**
+- Drag a `.cues` file onto any SLATE window, or
+- Open `http://localhost:8000?bundle=path/to/project.cues`
+
+**To create a bundle:**
+- In Compose mode, click the `⊕` button in the cue zone header (next to the JSON export button)
+- The bundle downloads as `<project-name>.cues`
+
+> **Note:** WAV files make large bundles (~50–60MB). Converting audio to MP3 reduces bundle size to ~4–8MB.
+
+**Bundle contents:**
+
+```
+project-name.cues  (ZIP)
+├── manifest.json       ← version, metadata, file pointers
+├── cues.json           ← scenes + cue definitions
+├── tracks.json         ← audio track metadata
+├── screenplay.pdf      ← the screenplay
+└── audio/
+    └── track.wav/mp3
+```
+
+---
+
 ## Keyboard shortcuts
 
 | Key | Action |
@@ -86,6 +116,22 @@ python3 -m http.server 8000
 | `C` | Switch to Compose mode |
 | `F` | Toggle fullscreen |
 | `M` | Add a note to the current page |
+
+---
+
+## Compose mode — inline editing
+
+| Action | How |
+|--------|-----|
+| Jump to page | Click any cue row |
+| Edit note | Click the note cell → type → Enter or click away |
+| Change track | Click the track cell → select from dropdown |
+| Set timestamp | Click the "Cue In" cell → type seconds → Enter |
+| Delete cue | Hover row → click `×` |
+| Search cues | Type in the search box (fuzzy: scene, track, note) |
+| Suggest cues | Click "Suggest" after the screenplay loads (uses interpreter) |
+| Export JSON | Click the ↓ button |
+| Export bundle | Click the ⊕ button |
 
 ---
 
@@ -153,6 +199,10 @@ All loaded via CDN. No install required.
 | [PDF.js](https://mozilla.github.io/pdf.js/) | 3.11.174 | Screenplay rendering |
 | [Howler.js](https://howlerjs.com) | 2.2.4 | Audio playback + cue timing |
 | [Wavesurfer.js](https://wavesurfer.xyz) | 7.8.2 | Waveform visualization |
+| [Fuse.js](https://www.fusejs.io) | 7 | Fuzzy cue search |
+| [Hotkeys.js](https://github.com/jaywcjlove/hotkeys-js) | 3 | Keyboard shortcut manager |
+| [Alpine.js](https://alpinejs.dev) | 3 | Reactive cue table |
+| [JSZip](https://stuk.github.io/jszip/) | 3.10.1 | `.cues` bundle read/write |
 
 ---
 

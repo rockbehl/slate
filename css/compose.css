@@ -684,4 +684,39 @@
 }
 .cm-del:hover { color: rgba(255,80,80,.85); }
 
+/* ── Audio error state ── */
+#wave-box.audio-error {
+    position: relative;
+}
+#wave-box.audio-error::after {
+    content: 'No audio — drop files into assets/audio/';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: .06em;
+    color: rgba(201,168,76,.35);
+    pointer-events: none;
+}
+
+/* ── Container queries — right pane adapts to drag-handle width ── */
+.r-pane {
+    container-type: inline-size;
+    container-name: rpane;
+}
+
+@container rpane (max-width: 420px) {
+    .interp-panel { display: none; }
+}
+
+@container rpane (max-width: 320px) {
+    .cue-table th:nth-child(2),
+    .cue-table td:nth-child(2),
+    .cue-table th:nth-child(3),
+    .cue-table td:nth-child(3) { display: none; }
+}
+
 } /* end @layer compose */

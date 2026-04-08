@@ -21,6 +21,7 @@ const CueEditor = (() => {
     let _pendingSuggest  = false;
     let _prevActiveIdx   = null;   // track last highlighted row to avoid full-scan
     let _fuse            = null;   // Fuse.js instance, rebuilt after each render
+    let _editing         = false;  // true while an inline input/select is open → block Alpine store push
 
     /* ─────────────────────────────────────────
        INIT — call after cues + scenes loaded
@@ -45,9 +46,48 @@ const CueEditor = (() => {
     }
 
     /* ─────────────────────────────────────────
+       ALPINE HELPERS
+    ───────────────────────────────────────── */
+    function _hasAlpineStore() {
+        try { return typeof Alpine !== 'undefined' && Alpine.store('player') !== undefined; }
+        catch (_) { return false; }
+    }
+
+    function _buildAlpineCues() {
+        return STATE.cues.map((cue, idx) => {
+            const scene = _sceneForPage(cue.page);
+            return {
+                ...cue,
+                _idx:        idx,
+                _color:      scene?.color || '#555',
+                _trackLabel: _trackLabel(cue.track),
+                _timeLabel:  _formatTime(cue.at),
+            };
+        });
+    }
+
+    function _rebuildFuse() {
+        if (typeof Fuse !== 'undefined') {
+            _fuse = new Fuse(STATE.cues, {
+                keys:      ['scene', 'track', 'note'],
+                threshold: 0.35,
+                ignoreLocation: true,
+            });
+        }
+    }
+
+    /* ─────────────────────────────────────────
        RENDER — populate the cue table
     ───────────────────────────────────────── */
     function render() {
+        // ── Alpine fast path: push to store, let x-for diff ──
+        if (_hasAlpineStore()) {
+            if (!_editing) Alpine.store('player').cues = _buildAlpineCues();
+            _rebuildFuse();
+            return;
+        }
+
+        // ── DOM fallback (no Alpine / before alpine:init) ──
         const tbody = document.getElementById('cue-tbody');
         if (!tbody) return;
 
@@ -101,13 +141,7 @@ const CueEditor = (() => {
         });
 
         // Rebuild Fuse index after every render so search reflects current cues
-        if (typeof Fuse !== 'undefined') {
-            _fuse = new Fuse(STATE.cues, {
-                keys:      ['scene', 'track', 'note'],
-                threshold: 0.35,
-                ignoreLocation: true,
-            });
-        }
+        _rebuildFuse();
     }
 
     /* ─────────────────────────────────────────
@@ -134,7 +168,11 @@ const CueEditor = (() => {
     ───────────────────────────────────────── */
     function setActive(cueIdx) {
         STATE.currentCue = cueIdx;
-        _refreshActiveRow();
+        if (_hasAlpineStore()) {
+            Alpine.store('player').currentCue = cueIdx;
+        } else {
+            _refreshActiveRow();
+        }
         _scrollToActive();
         if (typeof Waveform !== 'undefined') Waveform.highlightCueMarker(cueIdx);
     }
@@ -174,6 +212,7 @@ const CueEditor = (() => {
     }
 
     function _editNote(cell, idx) {
+        _editing = true;
         const current = STATE.cues[idx].note || '';
         cell.innerHTML = '';
 
@@ -196,6 +235,7 @@ const CueEditor = (() => {
         `;
 
         input.addEventListener('blur', () => {
+            _editing = false;
             STATE.cues[idx].note = input.value.trim();
             save();
             render();
@@ -228,6 +268,7 @@ const CueEditor = (() => {
     }
 
     function _editTrack(cell, idx) {
+        _editing = true;
         const current = STATE.cues[idx].track || '';
         cell.innerHTML = '';
 
@@ -256,6 +297,7 @@ const CueEditor = (() => {
         select.value = current;
 
         const commit = () => {
+            _editing = false;
             STATE.cues[idx].track = select.value;
             save();
             render();
@@ -263,7 +305,7 @@ const CueEditor = (() => {
         };
 
         select.addEventListener('change', commit);
-        select.addEventListener('blur',   () => { if (cell.contains(select)) render(); });
+        select.addEventListener('blur',   () => { _editing = false; if (cell.contains(select)) render(); });
         cell.appendChild(select);
         select.focus();
     }
@@ -281,6 +323,7 @@ const CueEditor = (() => {
     }
 
     function _editAt(cell, idx) {
+        _editing = true;
         const current = STATE.cues[idx].at ?? 0;
         cell.textContent = '';
 
@@ -293,6 +336,7 @@ const CueEditor = (() => {
         input.setAttribute('aria-label', 'Cue start time in seconds');
 
         input.addEventListener('blur', () => {
+            _editing = false;
             const val = parseFloat(input.value);
             STATE.cues[idx].at = isNaN(val) ? null : val;
             save();
@@ -454,6 +498,99 @@ const CueEditor = (() => {
     }
 
     /* ─────────────────────────────────────────
+       EXPORT .cues BUNDLE
+       Zips screenplay + audio + cues into a
+       portable self-contained project file.
+    ───────────────────────────────────────── */
+    async function exportBundle() {
+        if (typeof JSZip === 'undefined') {
+            if (typeof showNowPlaying === 'function') showNowPlaying('JSZip not loaded — bundle export unavailable');
+            console.error('SLATE exportBundle: JSZip is not loaded');
+            return;
+        }
+
+        const btn = document.getElementById('export-bundle-btn');
+        if (btn) { btn.disabled = true; btn.textContent = 'Packaging…'; }
+
+        try {
+            const zip = new JSZip();
+
+            // ── manifest ──
+            const existingManifest = (typeof STATE !== 'undefined' && STATE.bundleManifest) || {};
+            const tracks = (typeof STATE !== 'undefined' ? STATE.tracks : []) || [];
+            const manifest = {
+                version:      '1.0',
+                slateVersion: '1.0',
+                name:         existingManifest.name || document.title || 'Untitled',
+                createdAt:    existingManifest.createdAt || new Date().toISOString(),
+                updatedAt:    new Date().toISOString(),
+                pdfFile:      'screenplay.pdf',
+                cuesFile:     'cues.json',
+                tracksFile:   'tracks.json',
+                audioFolder:  'audio',
+                meta: {
+                    pageCount:  (typeof STATE !== 'undefined' && STATE.totalPages) || null,
+                    cueCount:   (typeof STATE !== 'undefined' ? STATE.cues.length : 0),
+                    audioFiles: tracks.map(t => ({ id: t.id, filename: t.originalFile || t.file })),
+                },
+            };
+            zip.file('manifest.json', JSON.stringify(manifest, null, 2));
+
+            // ── cues.json ──
+            zip.file('cues.json', JSON.stringify({ scenes: STATE.scenes, cues: STATE.cues }, null, 2));
+
+            // ── tracks.json — use originalFile names so bundle is self-consistent ──
+            const tracksForExport = tracks.map(t => ({
+                ...t,
+                file: t.originalFile || t.file,
+                originalFile: undefined,
+            }));
+            zip.file('tracks.json', JSON.stringify(tracksForExport, null, 2));
+
+            // ── audio files ──
+            const audioFolder = zip.folder('audio');
+            const pdfPath = (typeof PATHS !== 'undefined' ? PATHS.pdf : null) || 'assets/screenplay/screenplay.pdf';
+
+            for (const t of tracks) {
+                const originalFilename = t.originalFile || t.file;
+                // t.file may already be a blob: URL (if opened from a bundle)
+                const src = t.file.startsWith('blob:') ? t.file
+                    : `assets/audio/${encodeURIComponent(originalFilename)}`;
+                try {
+                    const blob = await fetch(src).then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); });
+                    audioFolder.file(originalFilename, blob);
+                } catch (e) {
+                    console.warn(`SLATE exportBundle: could not pack audio "${originalFilename}"`, e);
+                }
+            }
+
+            // ── screenplay PDF ──
+            try {
+                const pdfBlob = await fetch(pdfPath).then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); });
+                zip.file('screenplay.pdf', pdfBlob);
+            } catch (e) {
+                console.warn('SLATE exportBundle: could not pack screenplay PDF', e);
+            }
+
+            // ── generate download ──
+            const bundleBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+            const slug = manifest.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-_]/g, '').toLowerCase() || 'project';
+            const a = document.createElement('a');
+            a.href     = URL.createObjectURL(bundleBlob);
+            a.download = `${slug}.cues`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+
+            if (typeof showNowPlaying === 'function') showNowPlaying(`Exported ${slug}.cues`);
+        } catch (e) {
+            console.error('SLATE exportBundle: failed', e);
+            if (typeof showNowPlaying === 'function') showNowPlaying('Bundle export failed — check console');
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = 'Export .cues'; }
+        }
+    }
+
+    /* ─────────────────────────────────────────
        HELPERS
     ───────────────────────────────────────── */
     function _sceneForPage(pageNum) {
@@ -500,12 +637,29 @@ const CueEditor = (() => {
         if (el) el.textContent = `${STATE.cues.length} cue${STATE.cues.length !== 1 ? 's' : ''}`;
     }
 
+    /* ─────────────────────────────────────────
+       ALPINE BRIDGE — called from x-for template
+       $el is the <td> that Alpine passes via $event.target
+    ───────────────────────────────────────── */
+    function _alpineDelete(idx) {
+        _deleteCue(idx);
+    }
+
+    function _alpineEditNote(cell, idx) {
+        _editNote(cell, idx);
+    }
+
+    function _alpineEdit(field, cell, idx) {
+        if (field === 'track') _editTrack(cell, idx);
+        else if (field === 'at') _editAt(cell, idx);
+    }
+
     // Expose internals when running under the test harness — never in normal use
     const _testAPI = (typeof module !== 'undefined' || (typeof __SLATE_TEST__ !== 'undefined' && __SLATE_TEST__))
         ? { _formatTime, _esc, _sceneForPage }
         : null;
 
     /* Public API */
-    return { init, render, search, setActive, save, exportJSON, suggestCues, onInterpreterReady, toggleInterpPanel, _testAPI };
+    return { init, render, search, setActive, save, exportJSON, exportBundle, suggestCues, onInterpreterReady, toggleInterpPanel, _alpineDelete, _alpineEditNote, _alpineEdit, _testAPI };
 
 })();

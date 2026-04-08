@@ -45,6 +45,11 @@ const STATE = {
 /* ═══════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════ */
+// Register Alpine store before Alpine initialises its directives
+document.addEventListener('alpine:init', () => {
+    Alpine.store('player', { currentCue: null, cues: [] });
+});
+
 document.addEventListener('DOMContentLoaded', () => {
     // Cache hot-path DOM elements once
     _dom = {

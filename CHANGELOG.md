@@ -2,7 +2,37 @@
 
 ---
 
-## [Unreleased]
+## v2.0.0 — .cues Bundle Format + Phase 4 Complete + Alpine.js
+*2026-04-08*
+
+### Added
+- **`.cues` bundle format** (`js/bundle-loader.js`) — ZIP project container that packages screenplay PDF, audio files, `cues.json`, and `tracks.json` into a single portable file. Drag a `.cues` file onto SLATE to open it; all engines load from in-memory blob URLs with zero filesystem access. Inspired by `.sketch`/`.fcpbundle` project containers.
+  - `manifest.json` inside the ZIP stores version, name, timestamps, and file pointers
+  - `?bundle=<path>` query param also opens a remote bundle on page load
+  - Full-window drag-drop overlay with amber "Drop .cues bundle to open" prompt
+- **`CueEditor.exportBundle()`** — async write path; fetches all assets (PDF + audio + cues), packs via JSZip with DEFLATE compression, downloads as `<project-name>.cues`
+- **`AudioEngine._patchTracksFromBundle(tracks)`** — allows bundle-loader to inject pre-fetched blob: URL tracks directly, bypassing the `tracks.json` HTTP fetch
+- **JSZip 3.10.1** CDN added (35KB) — the only new dependency this version
+- **Export `.cues` button** in the cue zone header (alongside existing export JSON button), with title tooltip explaining bundle contents
+- **Alpine.js reactive cue table** (`index.html`, `js/cue-editor.js`, `js/app.js`) — `<tbody>` now uses `x-for` + `Alpine.store('player')` instead of full innerHTML teardown on every edit. O(1) active-row updates via `:class` binding; `_editing` guard prevents store push while inline inputs are open
+- **Interpreter Web Worker** (`js/interpreter-worker.js`) — all PDF parsing moved off the main thread. Worker receives `{url, numPages}`, runs full `_extractPage → _joinItems → _classify → _parse` pipeline, writes IndexedDB, postMessages result back. Main thread becomes a thin shell; `_analyzeFallback()` for file:// protocol environments
+- **CSS `@layer` architecture** — cascade fully explicit: `@layer tokens, base, components, audio-bar, screen, compose`. Eliminates all specificity overrides. `--vol-fill` token added; last `!important` removed
+- **Inline track assignment** — click any track cell in the cue table → `<select>` populated from `STATE.tracks`. Commits on change, cancels on blur
+- **Inline timestamp scrub** — click any "Cue In" cell → `<input type="number">`. Enter commits, Escape cancels, redraws waveform markers on commit
+- **Scene band labels** — each waveform scene band shows its label (e.g. "ACT II") on hover; Geist Mono, positioned bottom-left, fades in with CSS
+- **Interpreter panel** — collapsible panel in the waveform zone showing scene count, character count, and character chips (max 30 + "+N more"). Toggled by info button in `.z-hdr`. Hidden until interpreter fires
+- **Fuse.js 7** fuzzy search over cue scene/track/note fields — search input in cue zone header, threshold 0.35, `ignoreLocation: true`
+- **Hotkeys.js 3** keyboard manager — replaces raw `keydown` switch; auto-ignores inputs/textareas. All shortcuts unchanged externally
+
+### Changed
+- **rAF 60fps progress bar** — `_tick()` (250ms) now only calls `_checkCues()`; separate `_rafLoop()` using `requestAnimationFrame` drives `renderProgress()` at display refresh rate
+- **`CueEditor.render()`** — Alpine fast path pushes enriched cue array (with `_color`, `_trackLabel`, `_timeLabel`, `_idx` fields) to `Alpine.store('player').cues`; DOM teardown runs only as fallback when Alpine is unavailable
+- **`CueEditor.setActive()`** — updates `Alpine.store('player').currentCue` in addition to STATE; `_refreshActiveRow()` skipped when Alpine is managing the table
+- **Audio error state** — visual error overlay added to `#wave-box` when `tracks.json` fails to load (`.audio-error::after` CSS); previously only a label text change
+
+### Infrastructure
+- **Container queries** — `.r-pane` gets `container-type: inline-size`; Scene + Track columns auto-hide at ≤320px; interpreter panel hides at ≤420px. Zero JS. Chrome 105+, Firefox 110+, Safari 16+
+- **`PATHS` configurable** — `bundle-loader.js` patches `document.body` data attributes before the init chain runs, making all asset paths swappable without touching JS
 
 ---
 
