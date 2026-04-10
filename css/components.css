@@ -28,9 +28,9 @@
     border: none;
     background: transparent;
     font-family: var(--font-ui);
-    font-size: 9.5px;
-    font-weight: 600;
-    letter-spacing: .12em;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: .08em;
     text-transform: uppercase;
     color: var(--text-3);
     cursor: pointer;
@@ -189,9 +189,9 @@
     left: 50%;
     transform: translateX(-50%) translateY(-6px);
     font-family: var(--font-mono);
-    font-size: 9.5px;
-    color: rgba(201,168,76,.55);
-    letter-spacing: .12em;
+    font-size: 10px;
+    color: rgba(201,168,76,.6);
+    letter-spacing: .08em;
     opacity: 0;
     transition: opacity .5s var(--t-reveal), transform .5s var(--t-reveal);
     pointer-events: none;
@@ -209,10 +209,10 @@
 ───────────────────────────────────────────────── */
 
 .panel-lbl {
-    font-size: 8px;
-    font-weight: 700;
-    letter-spacing: .20em;
-    color: rgba(255,255,255,.18);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.22);
     text-transform: uppercase;
 }
 
@@ -221,16 +221,16 @@
 ───────────────────────────────────────────────── */
 
 .ghost-btn {
-    font-size: 9px;
+    font-size: 10px;
     padding: 3px 10px;
     border: 1px solid var(--border);
     background: transparent;
-    color: var(--text-4);
+    color: var(--text-3);
     border-radius: var(--radius-sm);
     cursor: pointer;
     font-family: var(--font-ui);
-    font-weight: 500;
-    letter-spacing: .09em;
+    font-weight: 400;
+    letter-spacing: .04em;
     transition: border-color var(--t-base), color var(--t-base), background var(--t-base);
 }
 

@@ -19,10 +19,10 @@
     --border-soft:  rgba(255,255,255,.024);   /* very subtle border */
 
     /* Text */
-    --text:         #e4dfd9;      /* primary text */
-    --text-2:       rgba(228,223,217,.52);    /* secondary */
-    --text-3:       rgba(228,223,217,.26);    /* tertiary */
-    --text-4:       rgba(228,223,217,.10);    /* ghost */
+    --text:         #e8e3dd;      /* primary text — slightly brighter */
+    --text-2:       rgba(232,227,221,.58);    /* secondary */
+    --text-3:       rgba(232,227,221,.32);    /* tertiary */
+    --text-4:       rgba(232,227,221,.14);    /* ghost */
 
     /* Accent — amber gold, used sparingly */
     --accent:       #c9a84c;
@@ -48,7 +48,7 @@
     --scene-green:  #5bb58c;
 
     /* ── Typography ── */
-    --font-ui:      'Syne', system-ui, -apple-system, sans-serif;
+    --font-ui:      'Figtree', system-ui, -apple-system, sans-serif;
     --font-mono:    'Geist Mono', 'Courier New', monospace;
     --font-screen:  'Courier New', Courier, monospace;
 
@@ -85,8 +85,8 @@
     /* Smooth deceleration for reveals and opacity fades */
     --t-reveal: .28s cubic-bezier(0.0, 0.0, 0.2, 1);
 
-    /* ── Opacity levels — sharper ambient/active contrast ── */
-    --ui-ambient: .26;    /* quiet: UI chrome nearly disappears */
+    /* ── Opacity levels — quiet but still readable ── */
+    --ui-ambient: .32;    /* quiet: visible but unobtrusive */
     --ui-hover:   1;      /* hover: snaps to full presence */
     --ui-active:  1;      /* active/selected state */
 
