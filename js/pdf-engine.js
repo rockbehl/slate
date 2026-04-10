@@ -49,6 +49,9 @@ const PDFEngine = (() => {
             STATE.currentPage = 1;
 
             if (typeof updatePageLabels === 'function') updatePageLabels();
+            // Hide the PDF intake drop zone once a document is loaded
+            const _pdfDrop = document.getElementById('intake-pdf-drop');
+            if (_pdfDrop) _pdfDrop.style.display = 'none';
 
             await renderPage(1);
 

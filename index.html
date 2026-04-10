@@ -178,6 +178,40 @@
         <!-- ── Right pane ── -->
         <div class="r-pane">
 
+            <!-- Project intake strip -->
+            <div class="intake-strip" id="intake-strip" aria-label="Project files">
+                <div class="intake-hdr">
+                    <input class="project-name-input" id="project-name"
+                           placeholder="Untitled Project"
+                           aria-label="Project name"
+                           spellcheck="false">
+                    <button class="ghost-btn intake-collapse" id="intake-collapse"
+                            aria-label="Collapse intake strip">↑</button>
+                </div>
+                <div class="intake-zones" id="intake-zones">
+                    <div class="intake-drop" id="intake-pdf-drop" role="button" tabindex="0"
+                         aria-label="Drop screenplay PDF here">
+                        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                            <rect x="2" y="1" width="9" height="12" rx="1.5" stroke="currentColor" stroke-width="1.1"/>
+                            <line x1="4.5" y1="4.5" x2="9.5" y2="4.5" stroke="currentColor" stroke-width="1"/>
+                            <line x1="4.5" y1="7" x2="9.5" y2="7" stroke="currentColor" stroke-width="1"/>
+                            <line x1="4.5" y1="9.5" x2="7.5" y2="9.5" stroke="currentColor" stroke-width="1"/>
+                        </svg>
+                        <span>Drop screenplay.pdf</span>
+                    </div>
+                    <div class="intake-drop" id="intake-audio-drop" role="button" tabindex="0"
+                         aria-label="Drop audio files here">
+                        <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                            <path d="M5 10.5V3.5l6-1.5v7" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/>
+                            <circle cx="3.5" cy="10.5" r="1.5" stroke="currentColor" stroke-width="1"/>
+                            <circle cx="9.5" cy="9" r="1.5" stroke="currentColor" stroke-width="1"/>
+                        </svg>
+                        <span>Drop audio files</span>
+                    </div>
+                </div>
+                <div class="intake-track-list" id="intake-track-list"></div>
+            </div>
+
             <!-- Waveform zone -->
             <section class="wave-zone" aria-label="Waveform timeline">
                 <div class="z-hdr">
@@ -412,6 +446,7 @@
 <script src="js/interpreter.js"></script>
 <script src="js/cue-editor.js"></script>
 <script src="js/scenes-editor.js"></script>
+<script src="js/project-intake.js"></script>
 <script src="js/comments.js"></script>
 <script src="js/app.js"></script>
 

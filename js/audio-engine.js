@@ -267,7 +267,42 @@ const AudioEngine = (() => {
         if (ids.length === 1) _defaultId = ids[0];
     }
 
+    /* ─────────────────────────────────────────────────
+       ADD TRACK FROM FILE — intake strip drag-drop path
+       Creates a Howl from a blob: URL, injects into STATE.tracks.
+    ───────────────────────────────────────────────── */
+    function _addTrackFromFile(file) {
+        const blobUrl  = URL.createObjectURL(file);
+        const name     = file.name;
+        const id       = name.replace(/\.[^.]+$/, '').toLowerCase().replace(/\s+/g, '_');
+        const ext      = name.split('.').pop().toLowerCase() || 'mp3';
+        const track    = { id, title: name, file: blobUrl, originalFile: name };
+
+        if (typeof STATE !== 'undefined') {
+            STATE.tracks = Array.isArray(STATE.tracks) ? STATE.tracks : [];
+            const existing = STATE.tracks.findIndex(t => t.id === id);
+            if (existing >= 0) STATE.tracks[existing] = track;
+            else STATE.tracks.push(track);
+        }
+
+        _sounds[id] = {
+            howl: new Howl({
+                src:         [blobUrl],
+                format:      [ext],
+                html5:       true,
+                volume:      0.85,
+                onloaderror: (_, err) => console.warn(`SLATE: failed to load intake audio "${name}"`, err),
+            }),
+            meta: track,
+        };
+
+        const ids = Object.keys(_sounds);
+        if (ids.length === 1) _defaultId = ids[0];
+        if (typeof CueEditor !== 'undefined') CueEditor.render();
+        return track;
+    }
+
     /* Public API */
-    return { init, play, pause, toggle, seekTo, seekToCue, setVolume, setAutoAdvance, isPlaying, getDuration, _patchTracksFromBundle };
+    return { init, play, pause, toggle, seekTo, seekToCue, setVolume, setAutoAdvance, isPlaying, getDuration, _patchTracksFromBundle, _addTrackFromFile };
 
 })();

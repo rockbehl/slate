@@ -40,6 +40,7 @@ const STATE = {
     scenes:          [],    // loaded from cues.json → scenes[]
     tracks:          [],    // loaded from tracks.json by AudioEngine
     interpreterData: null,  // set by Interpreter.analyze() after PDF is parsed
+    projectName:     '',    // set by ProjectIntake name input
 };
 
 /* ═══════════════════════════════════════════════
@@ -94,6 +95,7 @@ function loadCues() {
 
             CueEditor.init();
             ScenesEditor.init();
+            ProjectIntake.init();
             Waveform.init();
             Waveform.renderPins(STATE.cues);
             Waveform.renderBands(STATE.scenes);

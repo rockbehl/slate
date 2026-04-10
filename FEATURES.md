@@ -107,14 +107,14 @@ Active work and upcoming items. Updated as features ship.
 
 | Feature | cues-creator.html | Compose |
 |---------|------------------|---------|
-| PDF drag-drop intake | ✅ | ❌ assumes static path |
-| Audio drag-drop (multi-file) | ✅ | ❌ assumes `tracks.json` |
-| Project name input | ✅ | ❌ |
+| PDF drag-drop intake | ✅ | ✅ shipped v2.2.0 |
+| Audio drag-drop (multi-file) | ✅ | ✅ shipped v2.2.0 |
+| Project name input | ✅ | ✅ shipped v2.2.0 |
 | Scenes CRUD editor | ✅ | ✅ shipped v2.1.0 |
 | Scene color picker (8 swatches) | ✅ | ✅ shipped v2.1.0 |
 | `fadeIn` / `fadeOut` cue columns | ✅ | ❌ data exists, not exposed |
 
-### 1. Project Intake Strip (top of right pane, collapses after files loaded)
+### ✅ 1. Project Intake Strip (top of right pane, collapses after files loaded) — **shipped v2.2.0**
 - New `js/project-intake.js` — PDF drop → `PDFEngine.load(blobUrl)`; audio drop → `AudioEngine._addTrackFromFile(file)`
 - Project name input → `STATE.projectName`; persists in `manifest.json` on export
 - Collapse state persisted in localStorage

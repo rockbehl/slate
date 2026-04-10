@@ -806,4 +806,134 @@
 }
 .scene-del:hover { color: var(--error-hover); }
 
+/* ─────────────────────────────────────────────────
+   INTAKE STRIP — PDF + audio drag-drop at top of r-pane
+───────────────────────────────────────────────── */
+
+.intake-strip {
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.intake-hdr {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.project-name-input {
+    flex: 1;
+    background: none;
+    border: none;
+    border-bottom: 1px solid transparent;
+    color: var(--text-2);
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .02em;
+    padding: 2px 0;
+    outline: none;
+    transition: border-color var(--t-base), color var(--t-base);
+    min-width: 0;
+}
+
+.project-name-input::placeholder { color: var(--text-4); }
+
+.project-name-input:focus {
+    border-bottom-color: rgba(201,168,76,.25);
+    color: var(--text);
+}
+
+.intake-collapse {
+    flex-shrink: 0;
+    font-size: 11px;
+    padding: 2px 8px;
+}
+
+.intake-zones {
+    display: flex;
+    gap: 6px;
+}
+
+.intake-drop {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border: 1px dashed var(--border-soft);
+    border-radius: var(--radius-md);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-4);
+    cursor: pointer;
+    transition: border-color var(--t-base), color var(--t-base), background var(--t-base);
+    user-select: none;
+}
+
+.intake-drop:hover {
+    border-color: rgba(201,168,76,.22);
+    color: var(--text-3);
+}
+
+.intake-drop.drag-over {
+    border-color: rgba(201,168,76,.45);
+    color: rgba(201,168,76,.7);
+    background: var(--accent-dim);
+}
+
+.intake-track-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.track-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    background: rgba(255,255,255,.025);
+    border: 1px solid var(--border-soft);
+}
+
+.track-pill-name {
+    flex: 1;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-3);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.track-pill-dur {
+    font-family: var(--font-mono);
+    font-size: 8.5px;
+    color: var(--text-4);
+    flex-shrink: 0;
+}
+
+.track-pill-del {
+    background: none;
+    border: none;
+    color: var(--text-4);
+    cursor: pointer;
+    font-size: 12px;
+    padding: 0 2px;
+    flex-shrink: 0;
+    transition: color var(--t-fast);
+}
+
+.track-pill-del:hover { color: rgba(255,80,80,.5); }
+
+/* Collapsed state — just shows the header bar */
+.intake-strip.collapsed { padding-bottom: 10px; }
+
 } /* end @layer compose */
