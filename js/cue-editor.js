@@ -418,6 +418,7 @@ const CueEditor = (() => {
         console.log(`SLATE CueEditor: interpreter ready — ${count} cues, ${(data.scenes||[]).length} scenes, ${(data.characters||[]).length} chars`);
         _setBtnState('ready', `Suggest (${count})`);
         _populateInterpPanel(data);
+        ScenesEditor.syncFromInterpreter(data.scenes || []);
 
         if (_pendingSuggest) {
             _pendingSuggest = false;

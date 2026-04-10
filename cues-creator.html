@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SLATE — .cues Creator</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Geist+Mono:wght@300;400&display=swap" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<style>
+/* ── Tokens ── */
+:root {
+    --bg:           #070707;
+    --surface:      #0e0e0e;
+    --border:       rgba(255,255,255,.055);
+    --border-soft:  rgba(255,255,255,.03);
+    --text:         #e2ddd8;
+    --text-2:       rgba(226,221,216,.55);
+    --text-3:       rgba(226,221,216,.28);
+    --text-4:       rgba(226,221,216,.12);
+    --accent:       #c9a84c;
+    --accent-mid:   rgba(201,168,76,.45);
+    --accent-soft:  rgba(201,168,76,.12);
+    --accent-dim:   rgba(201,168,76,.06);
+    --page-bg:      #faf8f4;
+    --font-ui:      'Inter', system-ui, sans-serif;
+    --font-mono:    'Geist Mono', 'Courier New', monospace;
+    --t-base:       .22s ease;
+    --t-slow:       .4s ease;
+    --shadow-page:  0 24px 64px rgba(0,0,0,.8), 0 0 0 1px rgba(0,0,0,.25);
+    --scene-blue:   #5b8db5;
+    --scene-amber:  #b58c5b;
+    --scene-purple: #8b5bb5;
+    --scene-green:  #5bb58c;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+}
+
+/* ── Layout ── */
+.shell {
+    display: grid;
+    grid-template-rows: 38px 1fr 68px;
+    grid-template-columns: 40% 60%;
+    height: 100vh;
+}
+
+/* ── Topbar ── */
+.topbar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+    opacity: .45;
+    transition: opacity var(--t-base);
+}
+.topbar:hover { opacity: 1; }
+
+.tb-wordmark {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: .18em;
+    color: var(--text-3);
+    text-transform: uppercase;
+}
+.tb-wordmark span { color: var(--accent); }
+
+.tb-back {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    letter-spacing: .06em;
+    color: var(--text-3);
+    text-decoration: none;
+    transition: color var(--t-base);
+}
+.tb-back:hover { color: var(--text); }
+.tb-back svg { opacity: .5; }
+
+/* ── Left — PDF zone ── */
+.pdf-zone {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+.zone-label {
+    padding: 14px 18px 0;
+    font-size: 9px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    flex-shrink: 0;
+}
+
+.pdf-drop {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 12px;
+    border: 1px dashed rgba(201,168,76,.22);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color var(--t-base), background var(--t-base);
+    position: relative;
+    overflow: hidden;
+}
+.pdf-drop:hover,
+.pdf-drop.drag-over {
+    border-color: rgba(201,168,76,.55);
+    background: rgba(201,168,76,.03);
+}
+.pdf-drop.has-file {
+    border-color: rgba(201,168,76,.18);
+    border-style: solid;
+    cursor: default;
+}
+
+.drop-prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    pointer-events: none;
+    transition: opacity var(--t-base);
+}
+.drop-prompt svg { opacity: .2; }
+.drop-prompt-text {
+    font-size: 10px;
+    letter-spacing: .08em;
+    color: var(--text-3);
+    text-align: center;
+}
+.drop-prompt-sub {
+    font-size: 9px;
+    color: var(--text-4);
+    font-family: var(--font-mono);
+}
+
+.pdf-preview {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 16px;
+    gap: 10px;
+}
+.has-file .drop-prompt { display: none; }
+.has-file .pdf-preview { display: flex; }
+
+.pdf-canvas-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+}
+#pdf-thumb {
+    max-width: 100%;
+    max-height: 100%;
+    box-shadow: var(--shadow-page);
+    display: block;
+}
+
+.pdf-meta {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-3);
+    letter-spacing: .06em;
+    text-align: center;
+}
+.pdf-meta strong { color: var(--text-2); font-weight: 400; }
+
+/* ── Right — audio + scenes + cues ── */
+.right-pane {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Audio strip */
+.audio-strip {
+    border-bottom: 1px solid var(--border);
+    padding: 10px 18px 12px;
+    flex-shrink: 0;
+}
+
+.strip-lbl {
+    font-size: 9px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 8px;
+}
+
+.audio-drop {
+    border: 1px dashed rgba(201,168,76,.22);
+    border-radius: 5px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: border-color var(--t-base), background var(--t-base);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.audio-drop:hover,
+.audio-drop.drag-over {
+    border-color: rgba(201,168,76,.5);
+    background: rgba(201,168,76,.03);
+}
+
+.audio-drop-prompt {
+    font-size: 10px;
+    color: var(--text-3);
+    letter-spacing: .04em;
+    flex: 1;
+}
+
+.track-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100%;
+}
+
+.track-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border-soft);
+}
+.track-item:last-child { border-bottom: none; }
+
+.track-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent-mid);
+    flex-shrink: 0;
+}
+
+.track-name {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-2);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.track-dur {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-3);
+    flex-shrink: 0;
+}
+
+.track-del {
+    background: none;
+    border: none;
+    color: rgba(255,80,80,.35);
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    padding: 0 2px;
+    transition: color var(--t-base);
+    flex-shrink: 0;
+}
+.track-del:hover { color: rgba(255,80,80,.75); }
+
+/* Scenes */
+.scenes-strip {
+    border-bottom: 1px solid var(--border);
+    padding: 10px 18px 12px;
+    flex-shrink: 0;
+}
+
+.scene-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.scene-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.scene-color {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,.12);
+    flex-shrink: 0;
+    cursor: pointer;
+    position: relative;
+}
+.scene-color-picker {
+    position: absolute;
+    left: 14px;
+    top: -4px;
+    background: #1a1a1a;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px;
+    display: none;
+    gap: 5px;
+    z-index: 10;
+}
+.scene-color-picker.open { display: flex; }
+.swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform var(--t-base);
+}
+.swatch:hover { transform: scale(1.25); }
+
+.scene-input {
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-2);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 0;
+    width: 130px;
+    outline: none;
+    transition: border-color var(--t-base);
+}
+.scene-input:focus { border-color: var(--accent-mid); color: var(--text); }
+
+.scene-pages {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-3);
+}
+.scene-page-input {
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-3);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    width: 32px;
+    text-align: center;
+    padding: 1px 0;
+    outline: none;
+    transition: border-color var(--t-base), color var(--t-base);
+}
+.scene-page-input:focus { border-color: var(--accent-mid); color: var(--text); }
+
+.scene-del {
+    background: none;
+    border: none;
+    color: rgba(255,80,80,.25);
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    padding: 0;
+    margin-left: auto;
+    transition: color var(--t-base);
+}
+.scene-del:hover { color: rgba(255,80,80,.65); }
+
+.add-scene-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 9px;
+    letter-spacing: .06em;
+    color: var(--text-4);
+    padding: 4px 0;
+    margin-top: 4px;
+    transition: color var(--t-base);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.add-scene-btn:hover { color: var(--accent-mid); }
+
+/* Cue table */
+.cue-zone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 10px 18px 0;
+    gap: 8px;
+}
+
+.cz-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    opacity: .38;
+    transition: opacity var(--t-base);
+}
+.cz-hdr:hover { opacity: 1; }
+
+.panel-lbl {
+    font-size: 9px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+
+.add-cue-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    color: var(--text-3);
+    font-family: var(--font-ui);
+    font-size: 9px;
+    letter-spacing: .06em;
+    padding: 2px 10px;
+    cursor: pointer;
+    transition: border-color var(--t-base), color var(--t-base);
+}
+.add-cue-btn:hover { border-color: var(--accent-mid); color: var(--accent); }
+
+.cue-scroll {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: none;
+    padding-bottom: 8px;
+}
+.cue-scroll::-webkit-scrollbar { display: none; }
+
+.cue-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+.cue-table th {
+    font-size: 8.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--text-4);
+    font-weight: 400;
+    text-align: left;
+    padding: 0 6px 6px;
+    border-bottom: 1px solid var(--border-soft);
+}
+.cue-table th:first-child { padding-left: 0; width: 44px; }
+.cue-table th:nth-child(2) { width: 60px; }
+.cue-table th:nth-child(3) { width: 120px; }
+.cue-table th:last-child { width: 32px; }
+
+.cue-table td {
+    font-size: 10.5px;
+    padding: 5px 6px;
+    color: var(--text-2);
+    border-bottom: 1px solid var(--border-soft);
+    vertical-align: middle;
+}
+.cue-table td:first-child { padding-left: 0; }
+.cue-table td.mono { font-family: var(--font-mono); font-size: 10px; }
+
+.cue-table tr { transition: background var(--t-base); }
+.cue-table tr:hover td { background: rgba(255,255,255,.018); }
+
+.c-dot {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+
+.cue-td-input {
+    background: none;
+    border: none;
+    color: var(--text-2);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    width: 100%;
+    outline: none;
+    padding: 0;
+}
+.cue-td-input:focus { color: var(--text); border-bottom: 1px solid var(--accent-mid); }
+
+.cue-empty {
+    text-align: center;
+    color: var(--text-4);
+    font-size: 10px;
+    padding: 24px 0;
+    font-style: italic;
+    letter-spacing: .04em;
+}
+
+/* Delete button in cue row */
+.cue-del {
+    background: none;
+    border: none;
+    color: rgba(255,80,80,.3);
+    cursor: pointer;
+    font-size: 13px;
+    padding: 0 2px;
+    line-height: 1;
+    opacity: 0;
+    transition: opacity var(--t-base), color var(--t-base);
+}
+.cue-table tr:hover .cue-del { opacity: 1; }
+.cue-del:hover { color: rgba(255,80,80,.8); }
+
+/* ── Bottom bar ── */
+.bottom-bar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-top: 1px solid var(--border);
+    padding: 0 24px;
+    gap: 16px;
+}
+
+.export-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 28px;
+    border: 1px solid rgba(201,168,76,.35);
+    border-radius: 99px;
+    background: rgba(201,168,76,.05);
+    color: rgba(201,168,76,.8);
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .06em;
+    cursor: pointer;
+    transition: border-color var(--t-base), background var(--t-base), color var(--t-base);
+}
+.export-btn:hover {
+    border-color: rgba(201,168,76,.7);
+    background: rgba(201,168,76,.1);
+    color: var(--accent);
+}
+.export-btn:disabled {
+    opacity: .3;
+    cursor: not-allowed;
+}
+.export-btn svg { flex-shrink: 0; }
+
+.export-hint {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-4);
+    letter-spacing: .04em;
+}
+
+/* ── Toast ── */
+.toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(8px);
+    background: rgba(14,14,14,.95);
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    padding: 6px 18px;
+    font-size: 10px;
+    color: var(--text-2);
+    letter-spacing: .04em;
+    opacity: 0;
+    transition: opacity var(--t-base), transform var(--t-base);
+    pointer-events: none;
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
+    z-index: 99;
+}
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* ── Scrollbar global ── */
+* { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.06) transparent; }
+</style>
+</head>
+
+<body>
+<div class="shell">
+
+    <!-- Topbar -->
+    <header class="topbar">
+        <div class="tb-wordmark">SLATE <span>/</span> .cues Creator</div>
+        <a href="index.html" class="tb-back">
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                <polyline points="7,2 3,6 7,10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Back to SLATE
+        </a>
+    </header>
+
+    <!-- Left: PDF -->
+    <section class="pdf-zone">
+        <div class="zone-label">Screenplay</div>
+        <div class="pdf-drop" id="pdf-drop">
+            <div class="drop-prompt">
+                <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+                    <rect x="6" y="2" width="16" height="28" rx="2" stroke="currentColor" stroke-width="1.2"/>
+                    <line x1="10" y1="10" x2="22" y2="10" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+                    <line x1="10" y1="14" x2="22" y2="14" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+                    <line x1="10" y1="18" x2="18" y2="18" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+                    <polyline points="20,22 24,26 28,22" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <line x1="24" y1="20" x2="24" y2="26" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                </svg>
+                <div>
+                    <div class="drop-prompt-text">Drop screenplay.pdf here</div>
+                    <div class="drop-prompt-sub">or click to browse</div>
+                </div>
+            </div>
+            <div class="pdf-preview">
+                <div class="pdf-canvas-wrap">
+                    <canvas id="pdf-thumb"></canvas>
+                </div>
+                <div class="pdf-meta" id="pdf-meta"></div>
+            </div>
+        </div>
+        <input type="file" id="pdf-input" accept=".pdf" style="display:none">
+    </section>
+
+    <!-- Right: audio + scenes + cues -->
+    <div class="right-pane">
+
+        <!-- Audio -->
+        <div class="audio-strip">
+            <div class="strip-lbl">Audio Tracks</div>
+            <div class="audio-drop" id="audio-drop">
+                <div class="audio-drop-prompt" id="audio-drop-prompt">Drop audio files here · wav, mp3, ogg, flac</div>
+                <div class="track-list" id="track-list" style="display:none"></div>
+            </div>
+            <input type="file" id="audio-input" accept="audio/*" multiple style="display:none">
+        </div>
+
+        <!-- Scenes -->
+        <div class="scenes-strip">
+            <div class="strip-lbl">Scenes</div>
+            <div class="scene-rows" id="scene-rows"></div>
+            <button class="add-scene-btn" id="add-scene-btn">
+                <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+                    <line x1="5" y1="1" x2="5" y2="9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                    <line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                </svg>
+                Add scene
+            </button>
+        </div>
+
+        <!-- Cues -->
+        <div class="cue-zone">
+            <div class="cz-hdr">
+                <span class="panel-lbl">Cue Points</span>
+                <button class="add-cue-btn" id="add-cue-btn">+ Add Cue</button>
+            </div>
+            <div class="cue-scroll">
+                <table class="cue-table">
+                    <thead>
+                        <tr>
+                            <th>Page</th>
+                            <th>Cue In</th>
+                            <th>Track</th>
+                            <th>Note</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="cue-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Bottom bar -->
+    <footer class="bottom-bar">
+        <button class="export-btn" id="export-btn">
+            <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
+                <rect x="2" y="2" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.2"/>
+                <line x1="7" y1="5" x2="7" y2="9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                <line x1="5" y1="7" x2="9" y2="7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            </svg>
+            Package .cues Bundle
+        </button>
+        <span class="export-hint" id="export-hint">—</span>
+    </footer>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+/* ── State ── */
+const S = {
+    pdfFile:   null,
+    pdfDoc:    null,
+    pdfName:   '',
+    pdfPages:  0,
+    tracks:    [],   // { id, file, title, artist, _blob }
+    scenes:    [],   // { id, label, fromPage, toPage, color }
+    cues:      [],   // { page, scene, track, at, fadeIn, fadeOut, note }
+};
+
+const SWATCHES = [
+    '#5b8db5', '#b58c5b', '#8b5bb5', '#5bb58c',
+    '#b55b5b', '#8cb55b', '#5b8cb5', '#b5b55b',
+];
+
+/* ── PDF.js setup ── */
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+/* ── DOM refs ── */
+const $ = id => document.getElementById(id);
+const pdfDrop    = $('pdf-drop');
+const pdfInput   = $('pdf-input');
+const audioDrop  = $('audio-drop');
+const audioInput = $('audio-input');
+const sceneRows  = $('scene-rows');
+const cueTbody   = $('cue-tbody');
+const exportBtn  = $('export-btn');
+const exportHint = $('export-hint');
+const toast      = $('toast');
+
+/* ══════════════════════════════ PDF ══════════════════════════════ */
+pdfDrop.addEventListener('click', () => pdfInput.click());
+pdfInput.addEventListener('change', e => {
+    if (e.target.files[0]) loadPdf(e.target.files[0]);
+});
+
+setupDrop(pdfDrop, file => {
+    if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) loadPdf(file);
+    else showToast('Drop a .pdf file');
+});
+
+async function loadPdf(file) {
+    S.pdfFile = file;
+    S.pdfName = file.name;
+    const buf  = await file.arrayBuffer();
+    S.pdfDoc   = await pdfjsLib.getDocument({ data: buf }).promise;
+    S.pdfPages = S.pdfDoc.numPages;
+
+    pdfDrop.classList.add('has-file');
+
+    // Render page 1 thumbnail
+    const page    = await S.pdfDoc.getPage(1);
+    const canvas  = $('pdf-thumb');
+    const maxW    = pdfDrop.clientWidth  - 32;
+    const maxH    = pdfDrop.clientHeight - 60;
+    const vp0     = page.getViewport({ scale: 1 });
+    const scale   = Math.min(maxW / vp0.width, maxH / vp0.height);
+    const vp      = page.getViewport({ scale });
+    canvas.width  = vp.width;
+    canvas.height = vp.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+
+    $('pdf-meta').innerHTML = `<strong>${file.name}</strong> · ${S.pdfPages} pages`;
+
+    // Seed default scenes if none
+    if (!S.scenes.length) seedDefaultScenes();
+    updateHint();
+}
+
+function seedDefaultScenes() {
+    const pp = S.pdfPages;
+    S.scenes = [
+        { id: 'act1', label: 'ACT I',   fromPage: 1,              toPage: Math.round(pp * 0.33), color: '#5b8db5' },
+        { id: 'act2', label: 'ACT II',  fromPage: Math.round(pp * 0.33) + 1, toPage: Math.round(pp * 0.75), color: '#b58c5b' },
+        { id: 'act3', label: 'ACT III', fromPage: Math.round(pp * 0.75) + 1, toPage: pp, color: '#8b5bb5' },
+    ];
+    renderScenes();
+}
+
+/* ══════════════════════════════ AUDIO ══════════════════════════════ */
+audioDrop.addEventListener('click', () => audioInput.click());
+audioInput.addEventListener('change', e => {
+    [...e.target.files].forEach(addTrack);
+});
+
+setupDrop(audioDrop, file => {
+    if (file.type.startsWith('audio/') || /\.(mp3|wav|ogg|flac|aac|m4a|opus)$/i.test(file.name))
+        addTrack(file);
+    else showToast('Drop an audio file');
+}, true /* multi */);
+
+function addTrack(file) {
+    const existing = S.tracks.find(t => t.title === file.name);
+    if (existing) return;
+    const id = file.name.replace(/\.[^.]+$/, '').replace(/\s+/g, '-');
+    S.tracks.push({ id, file: file.name, title: file.name, artist: '', _blob: file });
+    renderTracks();
+    updateHint();
+}
+
+function renderTracks() {
+    const list   = $('track-list');
+    const prompt = $('audio-drop-prompt');
+    if (!S.tracks.length) {
+        list.style.display   = 'none';
+        prompt.style.display = '';
+        return;
+    }
+    list.style.display   = '';
+    prompt.style.display = 'none';
+    list.innerHTML = S.tracks.map((t, i) => `
+        <div class="track-item" data-i="${i}">
+            <span class="track-dot"></span>
+            <span class="track-name">${esc(t.title)}</span>
+            <span class="track-dur" id="tdur-${i}">—</span>
+            <button class="track-del" data-i="${i}" title="Remove">×</button>
+        </div>
+    `).join('');
+
+    list.querySelectorAll('.track-del').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            S.tracks.splice(+btn.dataset.i, 1);
+            renderTracks();
+            renderCues();
+            updateHint();
+        });
+    });
+
+    // Load audio durations
+    S.tracks.forEach((t, i) => {
+        if (!t._blob) return;
+        const url = URL.createObjectURL(t._blob);
+        const audio = new Audio();
+        audio.src = url;
+        audio.addEventListener('loadedmetadata', () => {
+            const el = $(`tdur-${i}`);
+            if (el) el.textContent = fmtTime(audio.duration);
+            URL.revokeObjectURL(url);
+        }, { once: true });
+    });
+}
+
+/* ══════════════════════════════ SCENES ══════════════════════════════ */
+$('add-scene-btn').addEventListener('click', () => {
+    const colorIdx = S.scenes.length % SWATCHES.length;
+    S.scenes.push({
+        id: `scene-${Date.now()}`,
+        label: `Scene ${S.scenes.length + 1}`,
+        fromPage: 1,
+        toPage: S.pdfPages || 10,
+        color: SWATCHES[colorIdx],
+    });
+    renderScenes();
+});
+
+function renderScenes() {
+    sceneRows.innerHTML = S.scenes.map((s, i) => `
+        <div class="scene-row" data-i="${i}">
+            <div class="scene-color" data-i="${i}" style="background:${s.color}" title="Change color">
+                <div class="scene-color-picker" id="scp-${i}">
+                    ${SWATCHES.map(c => `<div class="swatch" data-color="${c}" style="background:${c}" title="${c}"></div>`).join('')}
+                </div>
+            </div>
+            <input class="scene-input" type="text" value="${esc(s.label)}" data-i="${i}" data-field="label"
+                   placeholder="Scene name" spellcheck="false">
+            <div class="scene-pages">
+                pp
+                <input class="scene-page-input" type="number" value="${s.fromPage}" min="1" data-i="${i}" data-field="fromPage">
+                –
+                <input class="scene-page-input" type="number" value="${s.toPage}"   min="1" data-i="${i}" data-field="toPage">
+            </div>
+            <button class="scene-del" data-i="${i}" title="Remove">×</button>
+        </div>
+    `).join('');
+
+    // Color picker toggle
+    sceneRows.querySelectorAll('.scene-color').forEach(dot => {
+        dot.addEventListener('click', e => {
+            e.stopPropagation();
+            const picker = $(`scp-${dot.dataset.i}`);
+            picker.classList.toggle('open');
+        });
+    });
+
+    // Swatch pick
+    sceneRows.querySelectorAll('.swatch').forEach(sw => {
+        sw.addEventListener('click', e => {
+            e.stopPropagation();
+            const row   = sw.closest('.scene-row');
+            const i     = +row.dataset.i;
+            S.scenes[i].color = sw.dataset.color;
+            renderScenes();
+        });
+    });
+
+    // Label input
+    sceneRows.querySelectorAll('.scene-input').forEach(inp => {
+        inp.addEventListener('input', () => {
+            S.scenes[+inp.dataset.i].label = inp.value;
+        });
+    });
+
+    // Page inputs
+    sceneRows.querySelectorAll('.scene-page-input').forEach(inp => {
+        inp.addEventListener('input', () => {
+            const v = parseInt(inp.value, 10);
+            if (!isNaN(v)) S.scenes[+inp.dataset.i][inp.dataset.field] = v;
+        });
+    });
+
+    // Delete
+    sceneRows.querySelectorAll('.scene-del').forEach(btn => {
+        btn.addEventListener('click', () => {
+            S.scenes.splice(+btn.dataset.i, 1);
+            renderScenes();
+        });
+    });
+
+    // Close pickers on outside click
+    document.addEventListener('click', () => {
+        sceneRows.querySelectorAll('.scene-color-picker.open').forEach(p => p.classList.remove('open'));
+    }, { once: true });
+}
+
+/* ══════════════════════════════ CUES ══════════════════════════════ */
+$('add-cue-btn').addEventListener('click', () => {
+    S.cues.push({
+        page:    S.pdfPages || 1,
+        scene:   S.scenes[0]?.label || '',
+        track:   S.tracks[0]?.id    || '',
+        at:      0,
+        fadeIn:  1.5,
+        fadeOut: 2.0,
+        note:    '',
+    });
+    renderCues();
+});
+
+function renderCues() {
+    if (!S.cues.length) {
+        cueTbody.innerHTML = `<tr><td colspan="5" class="cue-empty">No cues yet — click Add Cue</td></tr>`;
+        return;
+    }
+
+    cueTbody.innerHTML = S.cues.map((cue, i) => {
+        const scene = S.scenes.find(s => cue.page >= s.fromPage && cue.page <= s.toPage);
+        const color = scene?.color || '#555';
+        return `
+        <tr data-i="${i}">
+            <td class="mono">
+                <span class="c-dot" style="background:${color}"></span>
+                <input class="cue-td-input" type="number" min="1" value="${cue.page}"
+                       data-i="${i}" data-f="page" style="width:32px" aria-label="Page">
+            </td>
+            <td class="mono">
+                <input class="cue-td-input" type="number" min="0" step="0.5" value="${cue.at ?? ''}"
+                       data-i="${i}" data-f="at" placeholder="—" aria-label="Cue in (s)">
+            </td>
+            <td>
+                <select class="cue-td-input" data-i="${i}" data-f="track" style="cursor:pointer"
+                        aria-label="Track">
+                    <option value="">— silence —</option>
+                    ${S.tracks.map(t => `<option value="${esc(t.id)}" ${cue.track===t.id?'selected':''}>${esc(t.title)}</option>`).join('')}
+                </select>
+            </td>
+            <td>
+                <input class="cue-td-input" type="text" value="${esc(cue.note||'')}"
+                       data-i="${i}" data-f="note" placeholder="—" aria-label="Note">
+            </td>
+            <td>
+                <button class="cue-del" data-i="${i}" title="Delete cue">×</button>
+            </td>
+        </tr>`;
+    }).join('');
+
+    cueTbody.querySelectorAll('.cue-td-input').forEach(inp => {
+        inp.addEventListener('change', () => {
+            const i = +inp.dataset.i, f = inp.dataset.f;
+            const v = inp.type === 'number' ? (inp.value === '' ? null : +inp.value) : inp.value;
+            S.cues[i][f] = v;
+            if (f === 'page') renderCues();
+        });
+    });
+
+    cueTbody.querySelectorAll('.cue-del').forEach(btn => {
+        btn.addEventListener('click', () => {
+            S.cues.splice(+btn.dataset.i, 1);
+            renderCues();
+        });
+    });
+}
+
+/* ══════════════════════════════ EXPORT ══════════════════════════════ */
+exportBtn.addEventListener('click', exportBundle);
+
+async function exportBundle() {
+    if (!S.pdfFile)     { showToast('Drop a screenplay PDF first'); return; }
+    if (!S.tracks.length && !S.cues.length) { showToast('Add at least one audio track or cue'); return; }
+
+    exportBtn.disabled    = true;
+    exportBtn.textContent = 'Packaging…';
+
+    try {
+        const zip = new JSZip();
+
+        const tracksForExport = S.tracks.map(t => ({
+            id:     t.id,
+            file:   t.file,
+            title:  t.title,
+            artist: t.artist || '',
+        }));
+
+        const name = S.pdfName.replace(/\.pdf$/i, '') || 'project';
+
+        const manifest = {
+            version:      '1.0',
+            slateVersion: '1.0',
+            name,
+            createdAt:    new Date().toISOString(),
+            updatedAt:    new Date().toISOString(),
+            pdfFile:      'screenplay.pdf',
+            cuesFile:     'cues.json',
+            tracksFile:   'tracks.json',
+            audioFolder:  'audio',
+            meta: {
+                pageCount:  S.pdfPages,
+                cueCount:   S.cues.length,
+                audioFiles: tracksForExport.map(t => ({ id: t.id, filename: t.file })),
+            },
+        };
+
+        zip.file('manifest.json', JSON.stringify(manifest, null, 2));
+        zip.file('cues.json',     JSON.stringify({ scenes: S.scenes, cues: S.cues }, null, 2));
+        zip.file('tracks.json',   JSON.stringify(tracksForExport, null, 2));
+        zip.file('screenplay.pdf', await S.pdfFile.arrayBuffer());
+
+        const audioFolder = zip.folder('audio');
+        for (const t of S.tracks) {
+            if (t._blob) audioFolder.file(t.file, await t._blob.arrayBuffer());
+        }
+
+        const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+        const slug = name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-_]/g, '').toLowerCase() || 'project';
+        const a    = document.createElement('a');
+        a.href     = URL.createObjectURL(blob);
+        a.download = `${slug}.cues`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        showToast(`Exported ${slug}.cues`);
+    } catch (e) {
+        console.error('Export failed', e);
+        showToast('Export failed — check console');
+    } finally {
+        exportBtn.disabled    = false;
+        exportBtn.innerHTML   = `<svg width="11" height="11" viewBox="0 0 14 14" fill="none">
+            <rect x="2" y="2" width="10" height="10" rx="2" stroke="currentColor" stroke-width="1.2"/>
+            <line x1="7" y1="5" x2="7" y2="9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            <line x1="5" y1="7" x2="9" y2="7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        </svg> Package .cues Bundle`;
+    }
+}
+
+/* ══════════════════════════════ HELPERS ══════════════════════════════ */
+function setupDrop(el, onFile, multi = false) {
+    el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('drag-over'); });
+    el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) el.classList.remove('drag-over'); });
+    el.addEventListener('drop', e => {
+        e.preventDefault();
+        el.classList.remove('drag-over');
+        const files = [...e.dataTransfer.files];
+        if (!files.length) return;
+        if (multi) files.forEach(onFile);
+        else onFile(files[0]);
+    });
+}
+
+function updateHint() {
+    const parts = [];
+    if (S.pdfPages)    parts.push(`${S.pdfPages} pp`);
+    if (S.tracks.length) parts.push(`${S.tracks.length} track${S.tracks.length!==1?'s':''}`);
+    if (S.cues.length)   parts.push(`${S.cues.length} cue${S.cues.length!==1?'s':''}`);
+    exportHint.textContent = parts.length ? parts.join(' · ') : '—';
+}
+
+function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+function fmtTime(s) {
+    if (!s || isNaN(s)) return '—';
+    const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+    return `${m}:${String(sec).padStart(2,'0')}`;
+}
+
+function esc(str) {
+    return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Boot ── */
+renderScenes();
+renderCues();
+updateHint();
+</script>
+</body>
+</html>

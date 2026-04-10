@@ -719,4 +719,91 @@
     .cue-table td:nth-child(3) { display: none; }
 }
 
+/* ─────────────────────────────────────────────────
+   Scenes Editor Zone
+───────────────────────────────────────────────── */
+.scenes-zone {
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+#scene-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.scene-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.scene-color {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,.12);
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: transform var(--t-base);
+}
+.scene-color:hover { transform: scale(1.35); }
+
+.scene-input {
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-2);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 0;
+    width: 120px;
+    outline: none;
+    transition: border-color var(--t-base);
+}
+.scene-input:focus { border-color: var(--accent-mid); color: var(--text); }
+
+.scene-pages {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 9px;
+    color: var(--text-3);
+    font-family: var(--font-mono);
+    flex-shrink: 0;
+}
+
+.scene-page-input {
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-3);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    width: 32px;
+    text-align: center;
+    padding: 1px 0;
+    outline: none;
+    transition: border-color var(--t-base), color var(--t-base);
+    -moz-appearance: textfield;
+}
+.scene-page-input::-webkit-inner-spin-button { display: none; }
+.scene-page-input:focus { border-color: var(--accent-mid); color: var(--text); }
+
+.scene-del {
+    margin-left: auto;
+    font-size: 13px;
+    color: var(--error);
+    transition: color var(--t-base);
+    flex-shrink: 0;
+}
+.scene-del:hover { color: var(--error-hover); }
+
 } /* end @layer compose */

@@ -18,7 +18,8 @@ Active work and upcoming items. Updated as features ship.
 ### Infrastructure
 - **CSS `@layer`** — explicit cascade: `tokens → base → components → audio-bar → screen → compose`; no `!important`, no specificity patches
 - **rAF 60fps progress** — `_rafLoop()` drives progress bar at display refresh rate; 250ms `setInterval` for cue detection only
-- **DOM caching** — `_dom` object eliminates repeated `getElementById` in hot paths
+- **DOM caching** — `_dom` object eliminates repeated `getElementById` in hot paths; includes `volTrack`/`volFill`
+- **`_prevHead` memoization** — rAF bar loop touches 0 bars when paused, 2 bars when moving (was full-array scan every frame)
 - **Hotkeys.js 3** — keyboard manager; auto-ignores inputs/textareas
 - **Container queries** — `.r-pane` adapts at ≤320px (hides Scene/Track columns) and ≤420px (hides interpreter panel)
 
@@ -60,6 +61,32 @@ Active work and upcoming items. Updated as features ship.
 - `AudioEngine._patchTracksFromBundle()` — blob: URL injection bypasses tracks.json fetch
 - Drop overlay: full-window, amber, fade-in on dragover
 
+### `cues-creator.html` — Standalone Bundle Creator
+- Self-contained HTML tool (no server needed) for building `.cues` bundles from scratch
+- PDF drop zone → PDF.js renders page 1 thumbnail, reads page count
+- Audio multi-drop → duration via `new Audio()`, track list with delete
+- Scenes CRUD — color swatch picker (8 presets), label, page range; auto-seeds 3 acts
+- Cue table — inline-editable page, timestamp, track (select), note
+- JSZip export → downloads real `.cues` ZIP
+
+### Scenes Editor (`js/scenes-editor.js`)
+- Scene CRUD in Compose right pane — color swatch cycling (8 presets), label, page range, delete
+- Event delegation (one listener on container, not per-row)
+- `syncFromInterpreter()` — seeds scenes from interpreter parse if none defined; page-bounds clamped
+- `--error` / `--error-hover` tokens added for destructive action states
+- `ScenesEditor.syncFromInterpreter()` wired into `CueEditor.onInterpreterReady`
+
+### Design Language Refresh (v2.1.0)
+- Font: Inter → **Syne** (geometric, instrument-software quality)
+- Transitions: flat `ease` → `cubic-bezier(0.16, 1, 0.3, 1)` expo-out throughout; `--t-reveal` for fades
+- Ambient opacity: `.35` → `.26` (sharper quiet/active contrast)
+- Micro-transforms: `.ib`, `.nb`, `.ghost-btn` scale on hover/press
+- Mode switcher underline slides in from center
+- `.float-bar.playing`: amber border corona + shadow when audio active
+- Progress fill read-head: scanning glow at leading edge when playing
+- Now-playing whisper: slides down from `translateY(-6px)`; opacity CSS-driven (`.visible` class)
+- Comment box: `translateY(4px)` → `0` drop-in on open
+
 ### Test Suite (`test/index.html`)
 - In-browser runner (open via `http://localhost:8000/test/`)
 - 50+ assertions: classifier, line grouping, cache key, time formatting, HTML escaping, scene lookup, regressions
@@ -68,30 +95,148 @@ Active work and upcoming items. Updated as features ship.
 
 ## 🔨 In Progress
 
-### GitHub Push
-- Remote: `https://github.com/rockbehl/slate.git`
-- **Blocked** — needs authentication (SSH key or PAT)
-- All commits local and ready
+*(Nothing active — v2.1.0 fully shipped. Next sprint below.)*
 
 ---
 
-## 🔜 Up Next
+## 🔜 Sprint: Compose → Creator Pivot
 
-### Wavesurfer Regions Plugin (Tier 3)
-- Replace hand-rolled `.cue-marker` + `.s-band` DOM with Wavesurfer v7 native Regions
+**Goal:** Compose mode becomes the single authoring environment. Drop files in, define scenes, set cues, export — without ever leaving `index.html`. `cues-creator.html` becomes a redirect entry point once parity is reached.
+
+### What's missing from Compose (has it in cues-creator.html)
+
+| Feature | cues-creator.html | Compose |
+|---------|------------------|---------|
+| PDF drag-drop intake | ✅ | ❌ assumes static path |
+| Audio drag-drop (multi-file) | ✅ | ❌ assumes `tracks.json` |
+| Project name input | ✅ | ❌ |
+| Scenes CRUD editor | ✅ | ✅ shipped v2.1.0 |
+| Scene color picker (8 swatches) | ✅ | ✅ shipped v2.1.0 |
+| `fadeIn` / `fadeOut` cue columns | ✅ | ❌ data exists, not exposed |
+
+### 1. Project Intake Strip (top of right pane, collapses after files loaded)
+- New `js/project-intake.js` — PDF drop → `PDFEngine.load(blobUrl)`; audio drop → `AudioEngine._addTrackFromFile(file)`
+- Project name input → `STATE.projectName`; persists in `manifest.json` on export
+- Collapse state persisted in localStorage
+- **New section in `index.html`** — `.intake-strip` at top of `.r-pane`
+- **New CSS in `compose.css`** — `.intake-strip`, `.intake-drop`, `.intake-track-list`
+- **New method in `audio-engine.js`** — `_addTrackFromFile(file)` → Howl from blob URL → updates `STATE.tracks` → `CueEditor.render()`
+
+### 3. fadeIn / fadeOut Cue Columns
+- Two new columns in `<thead>` and Alpine `x-for` template (same inline input pattern as `at-td`)
+- `_buildAlpineCues()` adds `_fadeInLabel`, `_fadeOutLabel` fields
+- Collapse via container query at narrow widths (same pattern as Scene/Track columns)
+
+### Execution order
+1. ~~Scenes editor~~ ✅ shipped v2.1.0
+2. Intake strip + `_addTrackFromFile`
+3. `fadeIn`/`fadeOut` columns
+
+---
+
+## 🔜 Tier 3 — Wavesurfer Regions
+
+- Replace hand-rolled `.cue-marker` + `.s-band` DOM with Wavesurfer v7 native Regions plugin
 - Draggable cue markers → update `cue.at` live on drag end
 - CDN: `https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js`
-- **Requires real audio** (needs duration from Wavesurfer `ready` event)
-- Real audio is present (`assets/audio/Teri Aisi Sazaa 0.2.wav`) — this is unblocked
+- **Unblocked** — real audio present at `assets/audio/`
 
-### Phase 5 — Reel Prep
-- `reel/prep-reel.js` — one-time script using interpreter output → `reel/reel-data.json`
-- Scene-level metadata, character index, page transition timing
+---
 
-### PDF Engine — Multi-page Scroll (Screen Mode)
-- All pages scrolled vertically instead of one-at-a-time
-- Requires switching from single `<canvas>` to virtual scroll with lazy-rendered canvases
-- Significant `pdf-engine.js` rewrite
+## 🔭 Screen Mode — Roadmap
+
+### Near-term (next sprint after creator pivot)
+
+**Scene-aware ambient tint**
+- On each `goToPage()`, look up current scene via `STATE.scenes`; shift `--bg` toward scene color at ~4% opacity
+- `color-mix(in srgb, #070707 96%, <scene-color> 4%)` — CSS transition handles crossfade
+- Effect: barely visible, cinematic, "just enough to notice"
+- Zero new files — 3-line check in `app.js:goToPage()` + 2 CSS rules
+
+**Scene transition whisper**
+- When page crosses a scene boundary, `showNowPlaying(scene.label)` fires
+- Reuses existing whisper infrastructure at zero cost
+- 3-line addition to `goToPage()`
+
+**Auto-advance canvas crossfade**
+- `AudioEngine._checkCues()` already fires a page advance when `autoAdvance` is on
+- Add `_lastAutoPage` guard to prevent double-advance on user arrow press
+- Canvas fade: `opacity: 0 → 1` on `renderPage()` (CSS transition, no JS animation needed)
+
+### Long-term (no timeline)
+
+**Multi-page vertical scroll**
+- Replace single `#screen-canvas` with virtual-scroll container of lazy-rendered canvases
+- `IntersectionObserver` triggers `PDFEngine.renderPage(n)` as each canvas enters viewport
+- Audio playhead drives scroll position when playing; user scroll breaks sync
+- Requires significant `pdf-engine.js` rewrite — dedicated session
+- New module: `js/screen-scroll-engine.js`
+
+**Typography / text mode**
+- Render `getTextContent()` output as formatted HTML instead of rasterized canvas
+- Crisper at any screen size, selectable text, true dark-mode ink
+- Blocked on: interpreter X-threshold accuracy must be near-perfect first
+
+**Ambient audio-reactive glow**
+- Web Audio API `AnalyserNode` → amplitude drives vignette glow behind screenplay page
+- Purely aesthetic; lowest priority
+
+---
+
+## 🔭 Reel Mode — Architecture & Roadmap
+
+Reel is a **scene-level navigator and visualizer** — not a reader, not an editor. Bird's-eye view of the entire project: all scenes laid out, character presence, cue density, mini-waveform.
+
+### Why it matters
+The interpreter already extracts everything needed (`scenes[]`, `characters[]`, `pageMap{}`). Reel is the UI surface that makes that data useful — a table of contents you can hear.
+
+### Data shape (`reel/reel-data.json`)
+Produced by `reel/prep-reel.js` (one-time script, entirely derivable from `STATE.interpreterData`):
+```json
+{
+  "scenes": [
+    {
+      "id": "act1", "label": "ACT I", "fromPage": 1, "toPage": 30, "color": "#5b8db5",
+      "characters": ["MAYA", "DR. CHEN"], "cueCount": 8,
+      "transitions": ["FADE IN:", "CUT TO:"], "thumbnail": null
+    }
+  ],
+  "characters": [
+    { "name": "MAYA", "firstPage": 3, "scenes": ["act1", "act2", "act3"] }
+  ]
+}
+```
+
+### MVP — Scene Cards Grid
+```
+[ ACT I          ]  [ ACT II         ]  [ ACT III        ]
+[ pp 1–30        ]  [ pp 31–70       ]  [ pp 71–92       ]
+[ 8 cues · 4 ch  ]  [ 12 cues · 6 ch ]  [ 5 cues · 3 ch  ]
+[ ████████░░░░░░ ]  [ ████████████░░ ]  [ █████░░░░░░░░░ ]
+  click to enter
+```
+
+Each card: scene color top border, label, page range, cue count, character count, mini progress bar.  
+Click → `setMode('screen'); goToPage(scene.fromPage)`.
+
+- New module: `js/reel-engine.js` — `init()`, `render()`, `highlightCard(sceneIdx)`
+- `#reel` div already exists in `index.html` (locked nav button placeholder)
+- `setMode('reel')` follows same pattern as Compose
+- New CSS file: `css/reel.css`
+
+### Full vision (no timeline)
+**Horizontal timeline layout**
+- Scene segments as colored blocks proportional to page count
+- Cue markers as vertical ticks below the scene track
+- Character presence bars — horizontal per character, showing which scenes they appear in
+- Mini waveform (Wavesurfer) synced underneath
+- Scrub: click any point → jump to page + seek audio
+
+### Execution order (when the time comes)
+1. `reel/prep-reel.js` — materialize `reel-data.json` from interpreter
+2. `js/reel-engine.js` — scene cards render, click-to-jump
+3. Wire `setMode('reel')` in `app.js`, unlock the nav button
+4. Full timeline layout — separate session
 
 ---
 

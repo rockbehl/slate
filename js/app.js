@@ -53,15 +53,18 @@ document.addEventListener('alpine:init', () => {
 document.addEventListener('DOMContentLoaded', () => {
     // Cache hot-path DOM elements once
     _dom = {
-        pFill:   document.getElementById('p-fill'),
-        pTrack:  document.getElementById('p-track'),
-        curT:    document.getElementById('cur-t'),
-        totalT:  document.getElementById('total-t'),
-        ph:      document.getElementById('ph'),
-        waveBox: document.getElementById('wave-box'),
-        barRow:  document.getElementById('bar-row'),
-        np:      document.getElementById('np'),
-        tLabel:  document.getElementById('t-label'),
+        pFill:    document.getElementById('p-fill'),
+        pTrack:   document.getElementById('p-track'),
+        curT:     document.getElementById('cur-t'),
+        totalT:   document.getElementById('total-t'),
+        ph:       document.getElementById('ph'),
+        waveBox:  document.getElementById('wave-box'),
+        barRow:   document.getElementById('bar-row'),
+        np:       document.getElementById('np'),
+        tLabel:   document.getElementById('t-label'),
+        volTrack:  document.querySelector('.vol-track'),
+        volFill:   document.querySelector('.vol-fill'),
+        floatBar:  document.querySelector('.float-bar'),
     };
 
     loadCues();
@@ -90,6 +93,7 @@ function loadCues() {
             await AudioEngine.init(STATE.cues, PATHS.tracks).catch(e => console.warn('SLATE AudioEngine init error:', e));
 
             CueEditor.init();
+            ScenesEditor.init();
             Waveform.init();
             Waveform.renderPins(STATE.cues);
             Waveform.renderBands(STATE.scenes);
@@ -209,12 +213,16 @@ function togglePlay() {
         playBtn.setAttribute('aria-pressed', STATE.playing);
         playBtn.setAttribute('aria-label', STATE.playing ? 'Pause' : 'Play');
     }
+    // Playing state: amber corona on the pill
+    _dom.floatBar?.classList.toggle('playing', STATE.playing);
 }
 
 window.togglePlay = togglePlay;
 
 // Tracks last written duration string — avoids reformatting every tick
 let _lastDurationStr = '';
+// Tracks last bar head index — skips full bar loop when playhead hasn't moved
+let _prevHead = -1;
 
 function renderProgress() {
     const { pFill, pTrack, curT, totalT, ph, waveBox, barRow } = _dom;
@@ -245,11 +253,16 @@ function renderProgress() {
     if (!waveBox || !waveBox.classList.contains('ws-active')) {
         const bars = barRow ? barRow.children : [];
         const head = Math.round((STATE.progress / 100) * bars.length);
-        for (let i = 0; i < bars.length; i++) {
-            const b = bars[i];
-            b.classList.remove('played', 'head');
-            if (i < head - 1)        b.classList.add('played');
-            else if (i === head - 1) b.classList.add('head');
+        if (head !== _prevHead) {
+            if (_prevHead >= 0 && _prevHead < bars.length) {
+                bars[_prevHead - 1]?.classList.remove('head');
+                bars[_prevHead - 1]?.classList.add('played');
+            }
+            if (head > 0 && head <= bars.length) {
+                bars[head - 1].classList.remove('played');
+                bars[head - 1].classList.add('head');
+            }
+            _prevHead = head;
         }
     }
 }
@@ -272,16 +285,15 @@ window.scrub = scrub;
 ═══════════════════════════════════════════════ */
 let _npTimer = null;
 function showNowPlaying(text) {
-    const el = _dom.np || document.getElementById('np');
+    const el = _dom.np;
     if (!el) return;
     if (text) {
         el.textContent = text;
-        const label = _dom.tLabel || document.getElementById('t-label');
-        if (label && !label.dataset.error) label.textContent = text;
+        if (_dom.tLabel && !_dom.tLabel.dataset.error) _dom.tLabel.textContent = text;
     }
-    el.style.opacity = '1';
+    el.classList.add('visible');
     clearTimeout(_npTimer);
-    _npTimer = setTimeout(() => { el.style.opacity = '0'; }, 2400);
+    _npTimer = setTimeout(() => el.classList.remove('visible'), 2400);
 }
 
 window.showNowPlaying = showNowPlaying;
@@ -290,8 +302,7 @@ window.showNowPlaying = showNowPlaying;
    VOLUME SLIDER
 ═══════════════════════════════════════════════ */
 function initVolumeSlider() {
-    const track = document.querySelector('.vol-track');
-    const fill  = document.querySelector('.vol-fill');
+    const { volTrack: track, volFill: fill } = _dom;
     if (!track || !fill) return;
 
     const DEFAULT_VOL = 0.85;

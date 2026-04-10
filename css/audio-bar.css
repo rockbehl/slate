@@ -20,10 +20,10 @@
     padding: 0 20px;
 
     /* Frosted pill */
-    background: rgba(10,10,10,.9);
+    background: rgba(9,9,9,.92);
     border: 1px solid var(--border);
     border-radius: var(--radius-pill);
-    backdrop-filter: blur(28px) saturate(160%);
+    backdrop-filter: blur(32px) saturate(160%);
     box-shadow: var(--shadow-float);
 
     /* Width: responsive but bounded */
@@ -32,17 +32,29 @@
     width: 50vw;
 
     white-space: nowrap;
+
+    /* Transition border glow when playing state changes */
+    transition: box-shadow var(--t-slow), border-color var(--t-slow);
+}
+
+/* Playing state: faint amber corona on the pill */
+.float-bar.playing {
+    border-color: rgba(201,168,76,.10);
+    box-shadow: var(--shadow-float-active);
 }
 
 /* ── Track info ── */
 .t-label {
     font-size: 11px;
-    color: rgba(226,221,216,.45);
-    letter-spacing: .03em;
+    font-family: var(--font-ui);
+    font-weight: 400;
+    color: rgba(228,223,217,.42);
+    letter-spacing: .02em;
     flex-shrink: 0;
     max-width: 150px;
     overflow: hidden;
     text-overflow: ellipsis;
+    transition: color var(--t-base);
 }
 
 /* ── Time display ── */
@@ -52,6 +64,7 @@
     color: var(--text-4);
     flex-shrink: 0;
     min-width: 28px;
+    transition: color var(--t-base);
 }
 
 .t-time.cur { color: var(--text-3); }
@@ -60,12 +73,12 @@
 .p-track {
     flex: 1;
     height: 2px;
-    background: rgba(255,255,255,.07);
+    background: rgba(255,255,255,.065);
     border-radius: 2px;
     cursor: pointer;
     position: relative;
     min-width: 80px;
-    transition: background var(--t-base), box-shadow var(--t-base);
+    transition: background var(--t-base);
 }
 
 .p-fill {
@@ -78,6 +91,23 @@
     transition: width .1s linear;
 }
 
+/* Leading-edge glow — scans forward like a read head */
+.p-fill::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: -2px;
+    width: 3px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 1px;
+    box-shadow: 0 0 8px 2px rgba(201,168,76,.5);
+    opacity: 0;
+    transition: opacity var(--t-base);
+}
+
+.float-bar.playing .p-fill::after { opacity: 1; }
+
 /* Scrub dot — appears on hover */
 .p-dot {
     position: absolute;
@@ -88,11 +118,15 @@
     background: var(--accent);
     border-radius: 50%;
     opacity: 0;
-    transition: opacity var(--t-fast);
-    box-shadow: 0 0 6px rgba(201,168,76,.4);
+    transition: opacity var(--t-fast), transform var(--t-fast);
+    box-shadow: 0 0 8px rgba(201,168,76,.45);
+    transform: scale(.8);
 }
 
-.p-track:hover .p-dot { opacity: 1; }
+.p-track:hover .p-dot {
+    opacity: 1;
+    transform: scale(1);
+}
 
 /* ── Volume ── */
 .vol-wrap {
@@ -105,10 +139,10 @@
 .vol-track {
     width: 56px;
     height: 2px;
-    background: rgba(255,255,255,.07);
+    background: rgba(255,255,255,.065);
     border-radius: 2px;
     cursor: pointer;
-    transition: background var(--t-base), box-shadow var(--t-base);
+    transition: background var(--t-base);
 }
 
 .vol-fill {
@@ -120,7 +154,7 @@
 
 /* Audio error state */
 .t-label[data-error] {
-    color: rgba(255,80,80,.35);
+    color: rgba(255,80,80,.32);
     font-style: italic;
 }
 
@@ -128,9 +162,10 @@
 .pg-tag {
     font-family: var(--font-mono);
     font-size: 9px;
-    color: rgba(201,168,76,.5);
+    color: rgba(201,168,76,.45);
     letter-spacing: .06em;
     flex-shrink: 0;
+    transition: color var(--t-base);
 }
 
 } /* end @layer audio-bar */

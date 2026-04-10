@@ -12,28 +12,34 @@
 :root {
 
     /* ── Colour ── */
-    --bg:           #070707;      /* main background */
-    --surface:      #0e0e0e;      /* slightly elevated surface */
-    --surface2:     #141414;      /* second level surface */
-    --border:       rgba(255,255,255,.055);   /* default border */
-    --border-soft:  rgba(255,255,255,.03);    /* very subtle border */
+    --bg:           #060606;      /* main background — pushed slightly darker */
+    --surface:      #0d0d0d;      /* slightly elevated surface */
+    --surface2:     #131313;      /* second level surface */
+    --border:       rgba(255,255,255,.048);   /* default border */
+    --border-soft:  rgba(255,255,255,.024);   /* very subtle border */
 
     /* Text */
-    --text:         #e2ddd8;      /* primary text */
-    --text-2:       rgba(226,221,216,.55);    /* secondary */
-    --text-3:       rgba(226,221,216,.28);    /* tertiary */
-    --text-4:       rgba(226,221,216,.12);    /* ghost */
+    --text:         #e4dfd9;      /* primary text */
+    --text-2:       rgba(228,223,217,.52);    /* secondary */
+    --text-3:       rgba(228,223,217,.26);    /* tertiary */
+    --text-4:       rgba(228,223,217,.10);    /* ghost */
 
     /* Accent — amber gold, used sparingly */
     --accent:       #c9a84c;
-    --accent-mid:   rgba(201,168,76,.45);
-    --accent-soft:  rgba(201,168,76,.12);
-    --accent-dim:   rgba(201,168,76,.06);
+    --accent-mid:   rgba(201,168,76,.42);
+    --accent-soft:  rgba(201,168,76,.10);
+    --accent-dim:   rgba(201,168,76,.055);
+    /* Accent glow — for active element halos */
+    --accent-glow:  rgba(201,168,76,.18);
 
     /* Screenplay page */
     --page-bg:      #faf8f4;
     --page-text:    #1a1a1a;
     --page-dim:     #888;
+
+    /* Destructive / error states */
+    --error:        rgba(220,80,80,.28);
+    --error-hover:  rgba(220,80,80,.72);
 
     /* Scene band colours (used in waveform + cue dots) */
     --scene-blue:   #5b8db5;
@@ -42,7 +48,7 @@
     --scene-green:  #5bb58c;
 
     /* ── Typography ── */
-    --font-ui:      'Inter', system-ui, -apple-system, sans-serif;
+    --font-ui:      'Syne', system-ui, -apple-system, sans-serif;
     --font-mono:    'Geist Mono', 'Courier New', monospace;
     --font-screen:  'Courier New', Courier, monospace;
 
@@ -71,23 +77,28 @@
     --radius-pill: 36px;
     --radius-full: 9999px;
 
-    /* ── Transitions ── */
-    --t-fast:   .15s ease;
-    --t-base:   .22s ease;
-    --t-slow:   .4s  ease;
+    /* ── Transitions — intentional curves, not flat ease ── */
+    /* Exponent out: snappy response, fast settle */
+    --t-fast:   .12s cubic-bezier(0.16, 1, 0.3, 1);
+    --t-base:   .20s cubic-bezier(0.16, 1, 0.3, 1);
+    --t-slow:   .38s cubic-bezier(0.16, 1, 0.3, 1);
+    /* Smooth deceleration for reveals and opacity fades */
+    --t-reveal: .28s cubic-bezier(0.0, 0.0, 0.2, 1);
 
-    /* ── Opacity levels for ambient UI ── */
-    --ui-ambient: .35;    /* default opacity for non-critical UI */
-    --ui-hover:   1;      /* opacity on hover */
+    /* ── Opacity levels — sharper ambient/active contrast ── */
+    --ui-ambient: .26;    /* quiet: UI chrome nearly disappears */
+    --ui-hover:   1;      /* hover: snaps to full presence */
     --ui-active:  1;      /* active/selected state */
 
     /* ── Component-specific tokens ── */
-    --vol-fill:    rgba(255,255,255,.2);   /* volume slider fill */
+    --vol-fill:    rgba(255,255,255,.18);   /* volume slider fill */
 
     /* ── Shadows ── */
-    --shadow-page:    0 32px 80px rgba(0,0,0,.75), 0 0 0 1px rgba(0,0,0,.2);
-    --shadow-page-sm: 0 12px 48px rgba(0,0,0,.7);
-    --shadow-float:   0 8px 40px rgba(0,0,0,.55), 0 1px 0 rgba(255,255,255,.04) inset;
+    --shadow-page:    0 32px 80px rgba(0,0,0,.80), 0 0 0 1px rgba(0,0,0,.2);
+    --shadow-page-sm: 0 12px 48px rgba(0,0,0,.72);
+    --shadow-float:   0 8px 40px rgba(0,0,0,.60), 0 1px 0 rgba(255,255,255,.035) inset;
+    /* Active float: subtle amber corona when playing */
+    --shadow-float-active: 0 8px 40px rgba(0,0,0,.60), 0 0 0 1px rgba(201,168,76,.12), 0 1px 0 rgba(255,255,255,.035) inset;
 }
 
 } /* end @layer tokens */
