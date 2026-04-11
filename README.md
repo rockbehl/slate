@@ -1,4 +1,4 @@
-# SLATE
+# SLATE · v2.3.0
 
 A private screening room for reading a screenplay while music plays underneath — synced to scenes, page by page.
 
@@ -8,11 +8,13 @@ No frameworks. No build step. Drop in a PDF and an audio file, open a browser.
 
 ## What it does
 
-SLATE has two modes:
+SLATE has three modes:
 
-**Screen** — Full-focus reader. One page at a time, nothing else visible. Audio plays underneath. Press `→` / `←` to turn pages, `Space` to play/pause, `F` for fullscreen, `M` to leave a note.
+**Screen** — Full-focus reader. One page at a time, nothing else visible. Audio plays underneath. The background shifts color subtly as you cross scene boundaries. Press `→` / `←` to turn pages, `Space` to play/pause, `F` for fullscreen, `M` to leave a note.
 
-**Compose** — Split workspace. Screenplay on the left, waveform timeline + cue table + page notes on the right. Drag the divider. Click a cue row to jump to that page. Edit notes, track assignments, and timestamps inline. Export the cue list as JSON or as a portable `.cues` bundle.
+**Compose** — Split workspace. Screenplay on the left, waveform timeline + cue table + page notes on the right. Drag the divider. Click a cue row to jump to that page. Edit notes, track assignments, timestamps, fade-in, and fade-out inline. Export the cue list as JSON or as a portable `.cues` bundle.
+
+**Reel** — Bird's-eye scene overview. All scenes as cards showing page range, cue count, and character presence. Click a card to jump to that scene in Screen mode. Active card tracks your current page.
 
 ---
 
@@ -114,6 +116,7 @@ project-name.cues  (ZIP)
 | `[` / `]` | Previous / next cue |
 | `S` | Switch to Screen mode |
 | `C` | Switch to Compose mode |
+| `R` | Switch to Reel mode |
 | `F` | Toggle fullscreen |
 | `M` | Add a note to the current page |
 

@@ -26,7 +26,8 @@
 const Waveform = (() => {
 
     let _ws         = null; // WaveSurfer instance
-    let _markerMap  = new Map(); // cueIdx → .cue-marker element (for O(1) highlight)
+    let _regions    = null; // WS7 RegionsPlugin instance (null = DOM fallback)
+    let _markerMap  = new Map(); // cueIdx → Region | .cue-marker element
     let _pinMap     = new Map(); // page    → .pin element      (avoids querySelectorAll)
 
     /* ─────────────────────────────────────────
@@ -54,6 +55,11 @@ const Waveform = (() => {
             ? trackMeta.file
             : `assets/audio/${encodeURIComponent(trackMeta.file)}`;
 
+        // Register Regions plugin if available (CDN script loaded)
+        if (typeof RegionsPlugin !== 'undefined') {
+            _regions = RegionsPlugin.create();
+        }
+
         _ws = WaveSurfer.create({
             container:     '#wave-box',
             waveColor:     'rgba(255,255,255,.12)',
@@ -67,6 +73,7 @@ const Waveform = (() => {
             normalize:     true,
             interact:      true,
             hideScrollbar: true,
+            plugins:       _regions ? [_regions] : [],
         });
 
         _ws.load(src);
@@ -164,12 +171,83 @@ const Waveform = (() => {
 
     /* ─────────────────────────────────────────
        SOUNDCLOUD-STYLE CUE MARKERS
-       Positioned on the waveform body by audio timestamp.
-       Falls back to page-based position when no audio duration is known.
+       When Regions plugin is loaded: WS7 native draggable regions.
+       Fallback: hand-rolled DOM divs (no audio / procedural state).
     ───────────────────────────────────────── */
     function renderCueMarkers(cues, scenes) {
+        if (!cues || !cues.length) return;
+        const totalDuration = (typeof AudioEngine !== 'undefined') ? AudioEngine.getDuration() : 0;
+
+        // Use Regions when plugin is loaded and audio duration is known
+        if (_regions && totalDuration > 0) {
+            _renderCueMarkersRegions(cues, scenes, totalDuration);
+        } else {
+            _renderCueMarkersDOM(cues, scenes);
+        }
+    }
+
+    /* WS7 Regions path — draggable markers that write back to cue.at */
+    function _renderCueMarkersRegions(cues, scenes, totalDuration) {
+        _regions.clearRegions();
+        _markerMap = new Map();
+
+        const sceneColor = page => {
+            const s = (scenes || []).find(s => page >= s.fromPage && page <= s.toPage);
+            return s ? s.color : '#c9a84c';
+        };
+
+        cues.forEach((cue, idx) => {
+            const color = sceneColor(cue.page);
+            const start = Math.max(0, Math.min(cue.at || 0, totalDuration - 0.01));
+
+            // Build tooltip element — reused as region content
+            const content = _buildMarkerContent(cue, color, totalDuration);
+
+            const region = _regions.addRegion({
+                start:   start,
+                end:     start + 0.01,       // near-zero width = marker appearance
+                color:   color + '28',       // transparent fill; stem drawn via CSS
+                drag:    true,
+                resize:  false,
+                id:      String(idx),
+                content: content,
+            });
+
+            // Style the region element to look like a cue pin
+            if (region.element) {
+                region.element.classList.add('cue-region');
+                region.element.style.setProperty('--mc', color);
+                if (!cue.track) region.element.classList.add('tbd');
+            }
+
+            // Drag end → update cue.at and persist
+            region.on('update-end', () => {
+                const newAt = Math.round(region.start * 10) / 10;
+                STATE.cues[idx].at = newAt;
+                if (typeof CueEditor !== 'undefined') CueEditor.save();
+                // Re-render to sync labels without full page reload
+                if (typeof CueEditor !== 'undefined') CueEditor.render();
+            });
+
+            // Click → jump to page + seek audio
+            region.on('click', (ev) => {
+                ev.stopPropagation();
+                if (typeof goToPage === 'function') goToPage(cue.page);
+                const dur = AudioEngine.getDuration();
+                if (dur > 0) {
+                    AudioEngine.seekTo((region.start / dur) * 100);
+                    if (typeof renderProgress === 'function') renderProgress();
+                }
+            });
+
+            _markerMap.set(idx, region);
+        });
+    }
+
+    /* DOM fallback path — original hand-rolled markers */
+    function _renderCueMarkersDOM(cues, scenes) {
         const box = document.getElementById('wave-box');
-        if (!box || !cues || !cues.length) return;
+        if (!box) return;
 
         box.querySelectorAll('.cue-marker').forEach(el => el.remove());
         _markerMap = new Map();
@@ -177,7 +255,6 @@ const Waveform = (() => {
         const totalDuration = (typeof AudioEngine !== 'undefined') ? AudioEngine.getDuration() : 0;
         const useTime = totalDuration > 0;
 
-        // Build page→scene color lookup
         const sceneColor = page => {
             const s = (scenes || []).find(s => page >= s.fromPage && page <= s.toPage);
             return s ? s.color : 'rgba(201,168,76,0.7)';
@@ -188,8 +265,8 @@ const Waveform = (() => {
                 ? Math.max(0, Math.min(100, (cue.at / totalDuration) * 100))
                 : Math.max(0, Math.min(100, (cue.page / (STATE.totalPages || 92)) * 100));
 
-            const color   = sceneColor(cue.page);
-            const marker  = document.createElement('div');
+            const color  = sceneColor(cue.page);
+            const marker = document.createElement('div');
             marker.className = 'cue-marker';
             if (pct > 75) marker.classList.add('tip-left');
             else if (pct < 25) marker.classList.add('tip-right');
@@ -198,29 +275,7 @@ const Waveform = (() => {
             marker.style.left  = pct + '%';
             marker.style.setProperty('--mc', color);
 
-            // Tooltip
-            const tip = document.createElement('div');
-            tip.className = 'cue-tip';
-
-            const trackEl = document.createElement('span');
-            trackEl.className = 'ct-track';
-            trackEl.textContent = cue.track || 'No track';
-
-            const metaEl = document.createElement('span');
-            metaEl.className = 'ct-meta';
-            metaEl.textContent = `P.${cue.page}` + (useTime && cue.at ? `  ${_fmtSec(cue.at)}` : '');
-
-            tip.appendChild(trackEl);
-            tip.appendChild(metaEl);
-
-            if (cue.note) {
-                const noteEl = document.createElement('span');
-                noteEl.className = 'ct-note';
-                noteEl.textContent = cue.note;
-                tip.appendChild(noteEl);
-            }
-
-            marker.appendChild(tip);
+            marker.appendChild(_buildMarkerContent(cue, color, totalDuration));
 
             marker.addEventListener('click', () => {
                 if (typeof goToPage === 'function') goToPage(cue.page);
@@ -235,13 +290,49 @@ const Waveform = (() => {
         });
     }
 
+    /* Shared tooltip element builder */
+    function _buildMarkerContent(cue, color, totalDuration) {
+        const useTime = totalDuration > 0;
+        const tip = document.createElement('div');
+        tip.className = 'cue-tip';
+
+        const trackEl = document.createElement('span');
+        trackEl.className   = 'ct-track';
+        trackEl.textContent = cue.track || 'No track';
+
+        const metaEl = document.createElement('span');
+        metaEl.className   = 'ct-meta';
+        metaEl.textContent = `P.${cue.page}` + (useTime && cue.at ? `  ${_fmtSec(cue.at)}` : '');
+
+        tip.appendChild(trackEl);
+        tip.appendChild(metaEl);
+
+        if (cue.note) {
+            const noteEl = document.createElement('span');
+            noteEl.className   = 'ct-note';
+            noteEl.textContent = cue.note;
+            tip.appendChild(noteEl);
+        }
+
+        return tip;
+    }
+
     // Highlight the active cue marker — called from CueEditor.setActive()
     let _prevMarkerIdx = null;
     function highlightCueMarker(idx) {
+        const _toggleActive = (markerIdx, active) => {
+            const m = _markerMap.get(markerIdx);
+            if (!m) return;
+            // Region path: toggle class on region.element
+            if (m.element) m.element.classList.toggle('active', active);
+            // DOM path: toggle class directly
+            else m.classList?.toggle('active', active);
+        };
+
         if (_prevMarkerIdx !== null && _prevMarkerIdx !== idx) {
-            _markerMap.get(_prevMarkerIdx)?.classList.remove('active');
+            _toggleActive(_prevMarkerIdx, false);
         }
-        if (idx !== null) _markerMap.get(idx)?.classList.add('active');
+        if (idx !== null) _toggleActive(idx, true);
         _prevMarkerIdx = idx;
     }
 

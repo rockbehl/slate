@@ -33,7 +33,7 @@ const ProjectIntake = (() => {
         strip.classList.toggle('collapsed', isCollapsed);
         if (zones) zones.style.display = isCollapsed ? 'none' : '';
         if (btn)   btn.textContent     = isCollapsed ? '↓' : '↑';
-        localStorage.setItem(LS_COLLAPSED, isCollapsed ? '1' : '0');
+        _lsSet(LS_COLLAPSED, isCollapsed ? '1' : '0');
     }
 
     /* ── Internal ── */
@@ -51,13 +51,18 @@ const ProjectIntake = (() => {
         if (typeof STATE !== 'undefined') STATE.projectName = saved;
     }
 
+    function _lsSet(key, value) {
+        try { localStorage.setItem(key, value); }
+        catch (e) { console.warn('SLATE: localStorage write failed —', e.message); }
+    }
+
     function _bindNameInput() {
         const input = document.getElementById('project-name');
         if (!input) return;
         input.addEventListener('input', () => {
             const v = input.value.trim();
             if (typeof STATE !== 'undefined') STATE.projectName = v;
-            localStorage.setItem(LS_NAME, v);
+            _lsSet(LS_NAME, v);
         });
     }
 
@@ -87,8 +92,7 @@ const ProjectIntake = (() => {
             if (!file) return;
             const url = URL.createObjectURL(file);
             if (typeof PDFEngine !== 'undefined') {
-                PDFEngine.load(url);
-                _hidePdfZone();
+                PDFEngine.load(url);  // PDFEngine.load() owns the hide
             }
         });
     }
@@ -125,7 +129,7 @@ const ProjectIntake = (() => {
 
         const durEl  = document.createElement('span');
         durEl.className     = 'track-pill-dur';
-        durEl.textContent   = '—';
+        durEl.textContent   = '…';
 
         const del    = document.createElement('button');
         del.className       = 'track-pill-del';
@@ -144,6 +148,7 @@ const ProjectIntake = (() => {
             const s = Math.round(tmpAudio.duration);
             durEl.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
         });
+        tmpAudio.addEventListener('error', () => { durEl.textContent = '—'; });
     }
 
     /* ── Generic drop helper ── */

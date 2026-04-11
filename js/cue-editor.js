@@ -58,10 +58,12 @@ const CueEditor = (() => {
             const scene = _sceneForPage(cue.page);
             return {
                 ...cue,
-                _idx:        idx,
-                _color:      scene?.color || '#555',
-                _trackLabel: _trackLabel(cue.track),
-                _timeLabel:  _formatTime(cue.at),
+                _idx:         idx,
+                _color:       scene?.color || '#555',
+                _trackLabel:  _trackLabel(cue.track),
+                _timeLabel:   _formatTime(cue.at),
+                _fadeInLabel:  cue.fadeIn  != null ? cue.fadeIn  + 's' : '—',
+                _fadeOutLabel: cue.fadeOut != null ? cue.fadeOut + 's' : '—',
             };
         });
     }
@@ -168,9 +170,9 @@ const CueEditor = (() => {
     ───────────────────────────────────────── */
     function setActive(cueIdx) {
         STATE.currentCue = cueIdx;
-        if (_hasAlpineStore()) {
-            Alpine.store('player').currentCue = cueIdx;
-        } else {
+        if (_hasAlpineStore() && !_editing) {
+            Alpine.store('player').currentCue = cueIdx;  // B7: skip during inline edit
+        } else if (!_hasAlpineStore()) {
             _refreshActiveRow();
         }
         _scrollToActive();
@@ -213,7 +215,7 @@ const CueEditor = (() => {
 
     function _editNote(cell, idx) {
         _editing = true;
-        const current = STATE.cues[idx].note || '';
+        const current = STATE.cues[idx]?.note || '';
         cell.innerHTML = '';
 
         const input = document.createElement('textarea');
@@ -320,6 +322,36 @@ const CueEditor = (() => {
         td.textContent = _formatTime(cue.at);
         td.addEventListener('click', () => _editAt(td, idx));
         return td;
+    }
+
+    function _editFadeField(cell, idx, field) {
+        _editing = true;
+        const current = STATE.cues[idx][field] ?? 0;
+        cell.textContent = '';
+
+        const input = document.createElement('input');
+        input.type      = 'number';
+        input.className = 'at-input';
+        input.value     = current;
+        input.min       = 0;
+        input.step      = 0.5;
+        input.setAttribute('aria-label', field === 'fadeIn' ? 'Fade in seconds' : 'Fade out seconds');
+
+        input.addEventListener('blur', () => {
+            _editing = false;
+            const val = parseFloat(input.value);
+            STATE.cues[idx][field] = isNaN(val) ? null : val;
+            save();
+            render();
+        });
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter')  { e.preventDefault(); input.blur(); }
+            if (e.key === 'Escape') { input.value = current; input.blur(); }
+        });
+
+        cell.appendChild(input);
+        input.focus();
+        input.select();
     }
 
     function _editAt(cell, idx) {
@@ -651,8 +683,9 @@ const CueEditor = (() => {
     }
 
     function _alpineEdit(field, cell, idx) {
-        if (field === 'track') _editTrack(cell, idx);
+        if (field === 'track')   _editTrack(cell, idx);
         else if (field === 'at') _editAt(cell, idx);
+        else if (field === 'fadeIn' || field === 'fadeOut') _editFadeField(cell, idx, field);
     }
 
     // Expose internals when running under the test harness — never in normal use

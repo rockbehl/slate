@@ -5,7 +5,7 @@
 ───────────────────────────────────────────────── */
 
 /* Layer declaration order = cascade priority (last wins) */
-@layer tokens, base, components, audio-bar, screen, compose;
+@layer tokens, base, components, audio-bar, screen, compose, reel;
 
 @layer tokens {
 

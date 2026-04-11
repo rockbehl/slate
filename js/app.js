@@ -285,8 +285,8 @@ function renderProgress() {
                 bars[_prevHead - 1]?.classList.add('played');
             }
             if (head > 0 && head <= bars.length) {
-                bars[head - 1].classList.remove('played');
-                bars[head - 1].classList.add('head');
+                bars[head - 1]?.classList.remove('played');
+                bars[head - 1]?.classList.add('head');
             }
             _prevHead = head;
         }
@@ -296,7 +296,7 @@ function renderProgress() {
 window.renderProgress = renderProgress;
 
 function scrub(e) {
-    const track = document.getElementById('p-track');
+    const track = _dom.pTrack;
     if (!track) return;
     const r = track.getBoundingClientRect();
     STATE.progress = Math.max(0, Math.min(((e.clientX - r.left) / r.width) * 100, 99));

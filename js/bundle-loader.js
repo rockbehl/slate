@@ -17,6 +17,10 @@
 
 const BundleLoader = (() => {
 
+    // B3: track previous blob URLs so they can be revoked when a new bundle loads
+    let _prevPdfUrl   = null;
+    let _prevAudioUrls = [];
+
     /* ─────────────────────────────────────────
        PUBLIC: open a .cues file (ArrayBuffer)
     ───────────────────────────────────────── */
@@ -51,11 +55,17 @@ const BundleLoader = (() => {
 
         console.log(`SLATE BundleLoader: opening "${manifest.name || filename}" v${manifest.version}`);
 
+        // B3: revoke previous blob URLs before creating new ones
+        if (_prevPdfUrl) { URL.revokeObjectURL(_prevPdfUrl); _prevPdfUrl = null; }
+        _prevAudioUrls.forEach(u => URL.revokeObjectURL(u));
+        _prevAudioUrls = [];
+
         // ── PDF ──
         const pdfEntry = zip.file(manifest.pdfFile || 'screenplay.pdf');
         if (!pdfEntry) { _showBundleError('Bundle is missing the screenplay PDF'); return; }
         const pdfBlob   = await pdfEntry.async('blob');
         const pdfBlobUrl = URL.createObjectURL(new Blob([pdfBlob], { type: 'application/pdf' }));
+        _prevPdfUrl = pdfBlobUrl;
 
         // ── cues.json ──
         const cuesEntry = zip.file(manifest.cuesFile || 'cues.json');
@@ -79,7 +89,9 @@ const BundleLoader = (() => {
             const audioEntry = zip.file(audioPath);
             if (audioEntry) {
                 const audioBlob = await audioEntry.async('blob');
-                audioMap[t.file] = URL.createObjectURL(audioBlob);
+                const audioUrl = URL.createObjectURL(audioBlob);
+                audioMap[t.file] = audioUrl;
+                _prevAudioUrls.push(audioUrl);  // B3: track for future revocation
                 console.log(`SLATE BundleLoader: loaded audio "${t.file}"`);
             } else {
                 console.warn(`SLATE BundleLoader: audio file not found in bundle: ${audioPath}`);

@@ -389,6 +389,64 @@
 /* Flip for markers near left edge */
 .cue-marker.tip-right .cue-tip { left: 0;    transform: none; }
 
+/* ── WS7 Region cue markers — mirror .cue-marker pin appearance ── */
+/* WaveSurfer inserts a <div part="region"> wrapper; .cue-region is our class on it */
+.cue-region {
+    /* Override WS default region background — we use our own stem */
+    background: transparent !important;
+    border-left: 1px solid var(--mc, rgba(201,168,76,.35));
+    border-right: none !important;
+    top: 22px !important;
+    bottom: 4px !important;
+    opacity: 0.35;
+    cursor: grab;
+    transition: opacity var(--t-base);
+    overflow: visible !important;
+}
+
+.cue-region:hover  { opacity: 1; z-index: 6; cursor: grabbing; }
+.cue-region.active { opacity: 0.9; z-index: 5; }
+.cue-region.tbd    { opacity: 0.18; }
+.cue-region.tbd:hover { opacity: 0.55; }
+
+/* Dot at top — pseudo on the region border element */
+.cue-region::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--mc, rgba(201,168,76,.7));
+    transition: transform var(--t-base), box-shadow var(--t-base);
+    pointer-events: none;
+}
+
+.cue-region:hover::before {
+    transform: scale(1.4);
+    box-shadow: 0 0 6px var(--mc, rgba(201,168,76,.5));
+}
+
+.cue-region.active::before {
+    transform: scale(1.2);
+    box-shadow: 0 0 8px var(--mc, rgba(201,168,76,.65));
+}
+
+/* Tooltip inside region — same .cue-tip styles apply; show on hover */
+.cue-region .cue-tip {
+    bottom: calc(100% + 14px);
+    left: 0;
+    transform: translateX(-50%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--t-base);
+}
+
+.cue-region:hover .cue-tip { opacity: 1; }
+
+/* Hide WS resize handles — regions are markers, not ranges */
+.cue-region [data-resize] { display: none !important; }
+
 .ct-track {
     font-size: 9px;
     font-family: var(--font-mono);
@@ -716,7 +774,11 @@
     .cue-table th:nth-child(2),
     .cue-table td:nth-child(2),
     .cue-table th:nth-child(3),
-    .cue-table td:nth-child(3) { display: none; }
+    .cue-table td:nth-child(3),
+    .cue-table th:nth-child(5),   /* Fade In  */
+    .cue-table td:nth-child(5),
+    .cue-table th:nth-child(6),   /* Fade Out */
+    .cue-table td:nth-child(6) { display: none; }
 }
 
 /* ─────────────────────────────────────────────────
@@ -844,7 +906,7 @@
 .project-name-input::placeholder { color: var(--text-4); }
 
 .project-name-input:focus {
-    border-bottom-color: rgba(201,168,76,.25);
+    border-bottom-color: var(--accent-mid);
     color: var(--text);
 }
 
@@ -876,12 +938,12 @@
 }
 
 .intake-drop:hover {
-    border-color: rgba(201,168,76,.22);
+    border-color: var(--accent-glow);
     color: var(--text-3);
 }
 
 .intake-drop.drag-over {
-    border-color: rgba(201,168,76,.45);
+    border-color: var(--accent-mid);
     color: rgba(201,168,76,.7);
     background: var(--accent-dim);
 }
@@ -931,7 +993,7 @@
     transition: color var(--t-fast);
 }
 
-.track-pill-del:hover { color: rgba(255,80,80,.5); }
+.track-pill-del:hover { color: var(--error-hover); }
 
 /* Collapsed state — just shows the header bar */
 .intake-strip.collapsed { padding-bottom: 10px; }

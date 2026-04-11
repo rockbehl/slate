@@ -69,6 +69,7 @@ const AudioEngine = (() => {
             // Derive format from extension for Howler's format hint
             const ext = t.file.split('.').pop().toLowerCase();
 
+            _sounds[t.id]?.howl?.unload();  // B2: release previous instance if reloading same id
             _sounds[t.id] = {
                 howl: new Howl({
                     src:         [src],
@@ -76,6 +77,7 @@ const AudioEngine = (() => {
                     html5:       true,
                     volume:      0.85,
                     onloaderror: (_, err) => console.warn(`SLATE: failed to load "${t.file}"`, err),
+                    onend:       ()       => _stopPoll(),  // B1: stop poll when track ends naturally
                 }),
                 meta: t,
             };
@@ -251,6 +253,7 @@ const AudioEngine = (() => {
             // Derive a format hint from original filename stored in t.originalFile,
             // or fall back to 'mp3' (Howler handles most formats anyway)
             const ext = (t.originalFile || '').split('.').pop().toLowerCase() || 'mp3';
+            _sounds[t.id]?.howl?.unload();  // B2: release previous instance if reloading same id
             _sounds[t.id] = {
                 howl: new Howl({
                     src:         [src],
@@ -258,6 +261,7 @@ const AudioEngine = (() => {
                     html5:       true,
                     volume:      0.85,
                     onloaderror: (_, err) => console.warn(`SLATE: failed to load bundle audio "${t.id}"`, err),
+                    onend:       ()       => _stopPoll(),  // B1: stop poll when track ends naturally
                 }),
                 meta: t,
             };
@@ -285,6 +289,7 @@ const AudioEngine = (() => {
             else STATE.tracks.push(track);
         }
 
+        _sounds[id]?.howl?.unload();  // B2: release previous instance if same track re-added
         _sounds[id] = {
             howl: new Howl({
                 src:         [blobUrl],
@@ -292,6 +297,7 @@ const AudioEngine = (() => {
                 html5:       true,
                 volume:      0.85,
                 onloaderror: (_, err) => console.warn(`SLATE: failed to load intake audio "${name}"`, err),
+                onend:       ()       => _stopPoll(),  // B1: stop poll when track ends naturally
             }),
             meta: track,
         };
