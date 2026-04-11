@@ -81,12 +81,18 @@
     window.showNowPlaying = () => {};
     window.goToPage = () => {};
     window.AudioEngine = undefined;
+    // Minimal Howl stub — AudioEngine tests only exercise _cueForPage/_checkCues
+    // which never call Howl. Stub prevents ReferenceError on script load.
+    window.Howl = function() { return { play(){}, pause(){}, stop(){}, seek(){return 0;}, duration(){return 0;}, on(){} }; };
+    window.CueEditor = undefined;
+    window.renderProgress = () => {};
     // localStorage is real in browser — no mock needed
 </script>
 
 <!-- Load modules under test -->
 <script src="../js/interpreter.js"></script>
 <script src="../js/cue-editor.js"></script>
+<script src="../js/audio-engine.js"></script>
 
 <!-- Test framework + specs -->
 <script>
@@ -156,6 +162,7 @@ function expect(val) {
 /* ── Pull test APIs ── */
 const { _classify, _itemsToLines, _joinItems, _cacheKey, X, CHAR_BLACKLIST } = Interpreter._testAPI;
 const { _formatTime, _esc, _sceneForPage }                        = CueEditor._testAPI;
+const { _cueForPage, _checkCues, _setLastCueFired, _setCues, _setCurrentId, _setDefaultId } = AudioEngine._testAPI;
 
 /* ── INTERPRETER: classifier ── */
 describe('Interpreter · scene headings', () => {
@@ -283,6 +290,121 @@ describe('CueEditor · _sceneForPage', () => {
     it('page 92 → act3', () => expect(_sceneForPage(92).id).toBe('act3'));
     it('page 0 → null',  () => expect(_sceneForPage(0)).toBeFalsy());
     it('page 100 → null',() => expect(_sceneForPage(100)).toBeFalsy());
+});
+
+/* ── AUDIO ENGINE: _cueForPage ── */
+describe('AudioEngine · _cueForPage', () => {
+    it('empty cues → null', () => {
+        _setCues([]);
+        expect(_cueForPage(1)).toBeFalsy();
+    });
+    it('single cue at page 1 → returned for page 1', () => {
+        _setCues([{ page: 1, at: 0, track: 'a.mp3' }]);
+        expect(_cueForPage(1)).toBeTruthy();
+    });
+    it('single cue at page 1 → returned for page 10 (last-before rule)', () => {
+        _setCues([{ page: 1, at: 0, track: 'a.mp3' }]);
+        expect(_cueForPage(10).page).toBe(1);
+    });
+    it('page before any cue → null', () => {
+        _setCues([{ page: 5, at: 10, track: 'a.mp3' }]);
+        expect(_cueForPage(3)).toBeFalsy();
+    });
+    it('multiple cues → picks closest preceding cue', () => {
+        _setCues([
+            { page: 1,  at: 0,  track: 'a.mp3' },
+            { page: 20, at: 60, track: 'a.mp3' },
+            { page: 50, at: 120, track: 'a.mp3' },
+        ]);
+        expect(_cueForPage(25).page).toBe(20);
+    });
+    it('exact page match → returns that cue', () => {
+        _setCues([
+            { page: 10, at: 30, track: 'a.mp3' },
+            { page: 20, at: 60, track: 'a.mp3' },
+        ]);
+        expect(_cueForPage(10).at).toBe(30);
+    });
+    it('last page beyond all cues → returns last cue', () => {
+        _setCues([
+            { page: 1,  at: 0,  track: 'a.mp3' },
+            { page: 40, at: 90, track: 'a.mp3' },
+        ]);
+        expect(_cueForPage(92).page).toBe(40);
+    });
+});
+
+/* ── AUDIO ENGINE: _checkCues ── */
+describe('AudioEngine · _checkCues', () => {
+    it('fires when seek passes cue.at', () => {
+        let fired = false;
+        _setCues([{ page: 5, at: 30, track: 'track1' }]);
+        _setCurrentId('track1');
+        _setDefaultId('track1');
+        _setLastCueFired(-1);
+        // Override goToPage to detect firing
+        const orig = window.goToPage;
+        window.goToPage = () => { fired = true; };
+        _checkCues(35);
+        window.goToPage = orig;
+        expect(fired).toBeTruthy();
+    });
+    it('does not fire before cue.at', () => {
+        let fired = false;
+        _setCues([{ page: 5, at: 30, track: 'track1' }]);
+        _setCurrentId('track1');
+        _setLastCueFired(-1);
+        const orig = window.goToPage;
+        window.goToPage = () => { fired = true; };
+        _checkCues(25);
+        window.goToPage = orig;
+        expect(fired).toBeFalsy();
+    });
+    it('does not double-fire same cue index', () => {
+        let count = 0;
+        _setCues([{ page: 5, at: 30, track: 'track1' }]);
+        _setCurrentId('track1');
+        _setLastCueFired(0);   // already fired index 0
+        const orig = window.goToPage;
+        window.goToPage = () => { count++; };
+        _checkCues(35);
+        window.goToPage = orig;
+        expect(count).toBe(0);
+    });
+    it('does not fire for a different track id', () => {
+        let fired = false;
+        _setCues([{ page: 5, at: 30, track: 'track2' }]);
+        _setCurrentId('track1');  // playing a different track
+        _setLastCueFired(-1);
+        const orig = window.goToPage;
+        window.goToPage = () => { fired = true; };
+        _checkCues(35);
+        window.goToPage = orig;
+        expect(fired).toBeFalsy();
+    });
+    it('fires for null cue.at → skipped (null guard)', () => {
+        let fired = false;
+        _setCues([{ page: 5, at: null, track: 'track1' }]);
+        _setCurrentId('track1');
+        _setLastCueFired(-1);
+        const orig = window.goToPage;
+        window.goToPage = () => { fired = true; };
+        _checkCues(35);
+        window.goToPage = orig;
+        expect(fired).toBeFalsy();
+    });
+    it('fires for cue without track when _defaultId matches', () => {
+        let fired = false;
+        _setCues([{ page: 5, at: 30 }]);   // no track field
+        _setCurrentId('default-track');
+        _setDefaultId('default-track');
+        _setLastCueFired(-1);
+        const orig = window.goToPage;
+        window.goToPage = () => { fired = true; };
+        _checkCues(35);
+        window.goToPage = orig;
+        expect(fired).toBeTruthy();
+    });
 });
 
 /* ── REGRESSIONS + BUG FIXES ── */

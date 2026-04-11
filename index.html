@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="css/audio-bar.css">
     <link rel="stylesheet" href="css/screen.css">
     <link rel="stylesheet" href="css/compose.css">
+    <link rel="stylesheet" href="css/reel.css">
 
     <!-- Phase 1 → PDF.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -23,8 +24,9 @@
     <!-- Phase 2 → Howler.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
 
-    <!-- Phase 3 → Wavesurfer.js -->
+    <!-- Phase 3 → Wavesurfer.js + Regions plugin (draggable cue markers) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/7.8.2/wavesurfer.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
 
     <!-- Fuse.js — fuzzy cue search (11KB) -->
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@7/dist/fuse.min.js"></script>
@@ -80,10 +82,10 @@
             aria-pressed="false"
             aria-label="Switch to Compose mode">Compose</button>
     <div class="mf-sep" role="separator"></div>
-    <button class="mf-btn locked"
-            disabled
-            aria-disabled="true"
-            aria-label="Reel mode — coming later">Reel</button>
+    <button class="mf-btn" id="ms-r"
+            onclick="setMode('reel')"
+            aria-pressed="false"
+            aria-label="Switch to Reel mode">Reel</button>
 </nav>
 
 <!-- ══════════════════════════════════════════════════
@@ -305,13 +307,15 @@
                                 <th scope="col">Scene</th>
                                 <th scope="col">Track</th>
                                 <th scope="col">Cue In</th>
+                                <th scope="col">Fade In</th>
+                                <th scope="col">Fade Out</th>
                                 <th scope="col">Notes</th>
                                 <th scope="col" class="sr-only">Delete</th>
                             </tr>
                         </thead>
                         <tbody id="cue-tbody" x-data>
                             <tr x-show="!$store.player.cues.length">
-                                <td colspan="6" class="cue-empty">No cues — click <em>Suggest</em> to generate from screenplay, or edit cues.json.</td>
+                                <td colspan="8" class="cue-empty">No cues — click <em>Suggest</em> to generate from screenplay, or edit cues.json.</td>
                             </tr>
                             <template x-for="(cue, idx) in $store.player.cues" :key="cue._idx">
                                 <tr :class="{ active: idx === $store.player.currentCue }"
@@ -326,6 +330,14 @@
                                     <td class="mono at-td" title="Click to set cue-in time"
                                         @click.stop="CueEditor._alpineEdit('at', $el, cue._idx)">
                                         <span x-text="cue._timeLabel"></span>
+                                    </td>
+                                    <td class="mono fade-td" title="Click to set fade-in seconds"
+                                        @click.stop="CueEditor._alpineEdit('fadeIn', $el, cue._idx)">
+                                        <span x-text="cue._fadeInLabel"></span>
+                                    </td>
+                                    <td class="mono fade-td" title="Click to set fade-out seconds"
+                                        @click.stop="CueEditor._alpineEdit('fadeOut', $el, cue._idx)">
+                                        <span x-text="cue._fadeOutLabel"></span>
                                     </td>
                                     <td class="note-td" data-field="note"
                                         @click.stop="CueEditor._alpineEditNote($el, cue._idx)">
@@ -356,6 +368,13 @@
         </div><!-- end .r-pane -->
     </div><!-- end .c-body -->
 </div><!-- end #compose -->
+
+<!-- ══════════════════════════════════════════════════
+     REEL MODE
+═══════════════════════════════════════════════════ -->
+<div id="reel" aria-label="Reel — scene overview">
+    <div class="reel-grid" id="reel-grid"></div>
+</div>
 
 
 <!-- ══════════════════════════════════════════════════
@@ -448,6 +467,7 @@
 <script src="js/scenes-editor.js"></script>
 <script src="js/project-intake.js"></script>
 <script src="js/comments.js"></script>
+<script src="js/reel-engine.js"></script>
 <script src="js/app.js"></script>
 
 <script>

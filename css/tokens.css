@@ -41,6 +41,10 @@
     --error:        rgba(220,80,80,.28);
     --error-hover:  rgba(220,80,80,.72);
 
+    /* Screen mode gradient — updated by goToPage() */
+    --page-pct:     0;        /* 0.000–1.000, page position through screenplay */
+    --scene-tint:   transparent;
+
     /* Scene band colours (used in waveform + cue dots) */
     --scene-blue:   #5b8db5;
     --scene-amber:  #b58c5b;

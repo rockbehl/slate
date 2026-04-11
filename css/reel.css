@@ -1,0 +1,142 @@
+/* ─────────────────────────────────────────────────
+   SLATE — Reel Mode
+   Bird's-eye scene grid
+───────────────────────────────────────────────── */
+
+@layer reel {
+
+#reel {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    padding: var(--sp-10) var(--sp-6);
+
+    /* Clear the floating bar at the bottom */
+    padding-bottom: calc(var(--bar-h) + var(--bar-bottom) + 32px);
+
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(.982);
+    transition: opacity var(--t-slow), transform var(--t-slow);
+}
+
+#reel.on {
+    opacity: 1;
+    pointer-events: all;
+    transform: scale(1);
+}
+
+/* ── Grid ─────────────────────────────────────── */
+
+.reel-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--sp-4);
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.reel-empty {
+    text-align: center;
+    color: var(--text-4);
+    font-size: 11px;
+    margin-top: 60px;
+}
+
+/* ── Scene card ───────────────────────────────── */
+
+.scene-card {
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--card-color, #555);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color var(--t-base), background var(--t-base), box-shadow var(--t-base);
+}
+
+.scene-card:hover {
+    background: rgba(255, 255, 255, .03);
+    box-shadow: 0 0 0 1px var(--card-color, #555) inset;
+}
+
+.scene-card:focus-visible {
+    box-shadow: 0 0 0 2px var(--accent);
+}
+
+.sc-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .03em;
+    color: var(--text);
+    text-transform: uppercase;
+}
+
+.sc-pages {
+    font-size: 9px;
+    font-family: var(--font-mono);
+    color: var(--text-3);
+    margin-top: 4px;
+}
+
+.sc-meta {
+    font-size: 9px;
+    font-family: var(--font-mono);
+    color: var(--text-4);
+    margin-top: 6px;
+}
+
+.sc-bar {
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 12px;
+    overflow: hidden;
+}
+
+.sc-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--card-color, #555);
+    opacity: .5;
+}
+
+/* ── Character presence chips ─────────────────── */
+
+.sc-chars {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 8px;
+}
+
+.sc-char {
+    font-size: 8px;
+    font-family: var(--font-mono);
+    color: var(--text-4);
+    background: rgba(255, 255, 255, .03);
+    border: 1px solid var(--border-soft);
+    border-radius: 3px;
+    padding: 1px 5px;
+    letter-spacing: .02em;
+    white-space: nowrap;
+}
+
+.sc-char-more {
+    color: var(--text-4);
+    background: none;
+    border-color: transparent;
+}
+
+/* ── Active card (tracks current page in Screen mode) ── */
+
+.scene-card.active {
+    box-shadow: 0 0 0 1px var(--accent-mid) inset;
+    border-top-color: var(--accent);
+}
+
+.scene-card.active .sc-label {
+    color: var(--accent);
+}
+
+} /* end @layer reel */

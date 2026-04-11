@@ -26,6 +26,55 @@
     transform: scale(.982);
 }
 
+/* ── Scrolling gradient backdrop ── */
+/*
+   Two layered radial gradients:
+   1. Primary — tight focal ellipse that drifts vertically with --page-pct
+      (top of screenplay → bottom as you page through)
+   2. Secondary — wide, slow horizontal drift for depth
+   Both use --scene-tint so the palette shifts at scene boundaries.
+   Combined opacity is ~5–7 % so the PDF canvas always reads first.
+*/
+#screen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+
+    background:
+        /* Primary: vertical drift */
+        radial-gradient(
+            ellipse 70% 45% at 50% calc(18% + var(--page-pct, 0) * 64%),
+            color-mix(in srgb, var(--scene-tint, #5b8db5) 8%, transparent),
+            transparent 62%
+        ),
+        /* Secondary: horizontal drift, opposite direction */
+        radial-gradient(
+            ellipse 110% 75% at calc(60% - var(--page-pct, 0) * 20%) 50%,
+            color-mix(in srgb, var(--scene-tint, #5b8db5) 3%, transparent),
+            transparent 75%
+        );
+
+    /* Slow breathe: opacity cycles ±15% over 9s */
+    animation: screen-bg-breath 9s ease-in-out infinite;
+
+    /* Gradient repaints when scene or page changes */
+    transition: background var(--t-slow);
+}
+
+@keyframes screen-bg-breath {
+    0%,  100% { opacity: .85; }
+    50%        { opacity: 1;   }
+}
+
+/* Flex children sit above the gradient */
+.screen-scroll,
+.screen-nav {
+    position: relative;
+    z-index: 1;
+}
+
 /* ── Scrollable screenplay container ── */
 .screen-scroll {
     flex: 1;
@@ -92,5 +141,10 @@ body.fullscreen .mode-float:hover {
 .nb-fs-exit               { display: none; }
 body.fullscreen .nb-fs-enter { display: none; }
 body.fullscreen .nb-fs-exit  { display: flex; align-items: center; }
+
+/* Canvas crossfade — opacity 0→1 on each page render */
+#screen-canvas, #compose-canvas {
+    transition: opacity var(--t-base);
+}
 
 } /* end @layer screen */

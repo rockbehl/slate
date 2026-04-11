@@ -76,6 +76,26 @@ Active work and upcoming items. Updated as features ship.
 - `--error` / `--error-hover` tokens added for destructive action states
 - `ScenesEditor.syncFromInterpreter()` wired into `CueEditor.onInterpreterReady`
 
+### Sprint B — Screen Mode Polish Pack
+
+- **Scene-aware ambient tint** — `goToPage()` looks up current scene, sets `--scene-tint` on `<html>`; `color-mix(in srgb, #070707 96%, <scene-color> 4%)` applied to `--bg`; CSS transition crossfades between scenes; "just enough to notice"
+- **Scene transition whisper** — page crossing a scene boundary fires `showNowPlaying(scene.label)`, reusing existing whisper infrastructure at zero cost
+- **Canvas crossfade on page turn** — `renderPage()` resets canvas `opacity` to `0` before drawing; CSS transition brings it to `1`; no JS animation, one rule in `screen.css`
+
+### Sprint D — Reel Mode MVP
+
+- **`js/reel-engine.js`** — `init()`, `render()`, `highlightCard(sceneIdx)`; scene cards grid built from `STATE.scenes`; each card shows scene color top border, label, page range, cue count, character count, mini progress bar; click → `setMode('screen'); goToPage(scene.fromPage)`
+- **`css/reel.css`** — grid layout, card hover/focus states, color border accent, amber highlight on active card
+- **Nav button unlocked** — Reel nav button in `index.html` enabled; `R` hotkey registered in `app.js`; `setMode('reel')` follows same pattern as Compose
+
+### Screen Mode — Scrolling Gradient Backdrop
+
+- **`#screen::before` dual radial gradient** — two overlapping radial gradients create a cinematic vignette behind the screenplay page
+- **Vertical drift via `--page-pct`** — CSS custom property (0→1, updated on each `goToPage()`) shifts gradient center vertically as you progress through the screenplay
+- **Slow breath animation** — 9s `@keyframes` opacity cycle on the pseudo-element; subtle pulse, never distracting
+- **Scene-color-aware** — gradient incorporates `--scene-tint` so the ambient color tracks the current act
+- **New tokens** — `--page-pct` and `--scene-tint` added to `css/tokens.css` as live state properties
+
 ### Design Language Refresh (v2.1.0)
 - Font: Inter → **Syne** (geometric, instrument-software quality)
 - Transitions: flat `ease` → `cubic-bezier(0.16, 1, 0.3, 1)` expo-out throughout; `--t-reveal` for fades
@@ -112,7 +132,7 @@ Active work and upcoming items. Updated as features ship.
 | Project name input | ✅ | ✅ shipped v2.2.0 |
 | Scenes CRUD editor | ✅ | ✅ shipped v2.1.0 |
 | Scene color picker (8 swatches) | ✅ | ✅ shipped v2.1.0 |
-| `fadeIn` / `fadeOut` cue columns | ✅ | ❌ data exists, not exposed |
+| `fadeIn` / `fadeOut` cue columns | ✅ | ✅ shipped v2.3.0 |
 
 ### ✅ 1. Project Intake Strip (top of right pane, collapses after files loaded) — **shipped v2.2.0**
 - New `js/project-intake.js` — PDF drop → `PDFEngine.load(blobUrl)`; audio drop → `AudioEngine._addTrackFromFile(file)`
@@ -134,34 +154,21 @@ Active work and upcoming items. Updated as features ship.
 
 ---
 
-## 🔜 Tier 3 — Wavesurfer Regions
+## ✅ Tier 3 — Wavesurfer Regions (shipped v2.3.0)
 
-- Replace hand-rolled `.cue-marker` + `.s-band` DOM with Wavesurfer v7 native Regions plugin
-- Draggable cue markers → update `cue.at` live on drag end
-- CDN: `https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js`
-- **Unblocked** — real audio present at `assets/audio/`
+- WS7 RegionsPlugin loaded from CDN; registered in `Waveform.init()`
+- `renderCueMarkers()` uses native regions when plugin + audio duration available; falls back to DOM markers
+- Draggable cue pins → `region.on('update-end')` writes `cue.at` back to STATE + `CueEditor.save()`
+- `.cue-region` CSS mirrors `.cue-marker` pin appearance (stem, dot, tooltip, active/tbd states)
+- Resize handles hidden — regions behave as point markers, not ranges
 
 ---
 
 ## 🔭 Screen Mode — Roadmap
 
-### Near-term (next sprint after creator pivot)
+### Near-term
 
-**Scene-aware ambient tint**
-- On each `goToPage()`, look up current scene via `STATE.scenes`; shift `--bg` toward scene color at ~4% opacity
-- `color-mix(in srgb, #070707 96%, <scene-color> 4%)` — CSS transition handles crossfade
-- Effect: barely visible, cinematic, "just enough to notice"
-- Zero new files — 3-line check in `app.js:goToPage()` + 2 CSS rules
-
-**Scene transition whisper**
-- When page crosses a scene boundary, `showNowPlaying(scene.label)` fires
-- Reuses existing whisper infrastructure at zero cost
-- 3-line addition to `goToPage()`
-
-**Auto-advance canvas crossfade**
-- `AudioEngine._checkCues()` already fires a page advance when `autoAdvance` is on
-- Add `_lastAutoPage` guard to prevent double-advance on user arrow press
-- Canvas fade: `opacity: 0 → 1` on `renderPage()` (CSS transition, no JS animation needed)
+*(Sprint B items shipped — see Shipped section above.)*
 
 ### Long-term (no timeline)
 
@@ -232,10 +239,10 @@ Click → `setMode('screen'); goToPage(scene.fromPage)`.
 - Mini waveform (Wavesurfer) synced underneath
 - Scrub: click any point → jump to page + seek audio
 
-### Execution order (when the time comes)
+### Execution order
 1. `reel/prep-reel.js` — materialize `reel-data.json` from interpreter
-2. `js/reel-engine.js` — scene cards render, click-to-jump
-3. Wire `setMode('reel')` in `app.js`, unlock the nav button
+2. ~~`js/reel-engine.js` — scene cards render, click-to-jump~~ ✅ shipped Sprint D
+3. ~~Wire `setMode('reel')` in `app.js`, unlock the nav button~~ ✅ shipped Sprint D
 4. Full timeline layout — separate session
 
 ---

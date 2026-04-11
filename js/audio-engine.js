@@ -302,7 +302,12 @@ const AudioEngine = (() => {
         return track;
     }
 
+    // Expose internals when running under the test harness — never in normal use
+    const _testAPI = (typeof module !== 'undefined' || (typeof __SLATE_TEST__ !== 'undefined' && __SLATE_TEST__))
+        ? { _cueForPage, _checkCues, _setLastCueFired: v => { _lastCueFired = v; }, _setCues: v => { _cues = v; }, _setCurrentId: v => { _currentId = v; }, _setDefaultId: v => { _defaultId = v; } }
+        : null;
+
     /* Public API */
-    return { init, play, pause, toggle, seekTo, seekToCue, setVolume, setAutoAdvance, isPlaying, getDuration, _patchTracksFromBundle, _addTrackFromFile };
+    return { init, play, pause, toggle, seekTo, seekToCue, setVolume, setAutoAdvance, isPlaying, getDuration, _patchTracksFromBundle, _addTrackFromFile, _testAPI };
 
 })();

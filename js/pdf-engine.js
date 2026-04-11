@@ -123,6 +123,9 @@ const PDFEngine = (() => {
             wrap.appendChild(canvas);
         }
 
+        // Fade out before drawing new page — CSS transition brings it back
+        canvas.style.opacity = '0';
+
         // Physical pixel dimensions (what the GPU sees)
         canvas.width  = Math.round(viewport.width);
         canvas.height = Math.round(viewport.height);
@@ -139,6 +142,7 @@ const PDFEngine = (() => {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         await page.render({ canvasContext: ctx, viewport }).promise;
+        canvas.style.opacity = '1';
     }
 
     /* ─────────────────────────────────────────

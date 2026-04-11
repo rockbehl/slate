@@ -41,6 +41,7 @@ const STATE = {
     tracks:          [],    // loaded from tracks.json by AudioEngine
     interpreterData: null,  // set by Interpreter.analyze() after PDF is parsed
     projectName:     '',    // set by ProjectIntake name input
+    _lastSceneId:    null,  // tracks last scene for whisper debounce
 };
 
 /* ═══════════════════════════════════════════════
@@ -96,6 +97,7 @@ function loadCues() {
             CueEditor.init();
             ScenesEditor.init();
             ProjectIntake.init();
+            ReelEngine.init();
             Waveform.init();
             Waveform.renderPins(STATE.cues);
             Waveform.renderBands(STATE.scenes);
@@ -119,15 +121,20 @@ function setMode(m) {
 
     document.getElementById('screen').classList.toggle('off', m !== 'screen');
     document.getElementById('compose').classList.toggle('on',  m === 'compose');
+    document.getElementById('reel').classList.toggle('on',     m === 'reel');
 
     const msS = document.getElementById('ms-s');
     const msC = document.getElementById('ms-c');
+    const msR = document.getElementById('ms-r');
     msS.classList.toggle('active', m === 'screen');
     msC.classList.toggle('active', m === 'compose');
+    if (msR) msR.classList.toggle('active', m === 'reel');
     msS.setAttribute('aria-pressed', m === 'screen');
     msC.setAttribute('aria-pressed', m === 'compose');
+    if (msR) msR.setAttribute('aria-pressed', m === 'reel');
 
     if (m === 'compose') Waveform.rebuild();
+    if (m === 'reel')    ReelEngine.render();
 }
 
 window.setMode = setMode;
@@ -141,9 +148,26 @@ function goToPage(pageNum) {
     STATE.currentPage = n;
     updatePageLabels();
 
+    // Page progress (0–1) — drives the scrolling gradient in Screen mode
+    const _pct = (STATE.totalPages > 1) ? (n - 1) / (STATE.totalPages - 1) : 0;
+    document.body.style.setProperty('--page-pct', _pct.toFixed(3));
+
+    // Scene-aware ambient tint + transition whisper
+    const _scene = STATE.scenes.find(s => n >= s.fromPage && n <= s.toPage);
+    document.body.style.setProperty('--scene-tint', _scene ? _scene.color : 'transparent');
+    if (_scene && _scene.id !== STATE._lastSceneId) {
+        STATE._lastSceneId = _scene.id;
+        showNowPlaying(_scene.label || _scene.heading || '');
+    } else if (!_scene) {
+        STATE._lastSceneId = null;
+    }
+
     PDFEngine.renderPage(n);
     Waveform.highlightPin(n);
     Comments.syncIndicator();
+    if (STATE.mode === 'reel') ReelEngine.highlightCard(
+        STATE.scenes.findIndex(s => n >= s.fromPage && n <= s.toPage)
+    );
 }
 
 function pg(delta) {
@@ -402,5 +426,6 @@ function initKeyboard() {
     hotkeys('m,M',    ()  => Comments.capture());
     hotkeys('s,S',    ()  => setMode('screen'));
     hotkeys('c,C',    ()  => setMode('compose'));
+    hotkeys('r,R',    ()  => setMode('reel'));
     hotkeys('f,F',    e   => { e.preventDefault(); toggleFullscreen(); });
 }
