@@ -1,5 +1,8 @@
 # SLATE — Claude Code Context
 
+> **⚠️ Active architectural pivot — read [`V3_PLAN.md`](./V3_PLAN.md) before starting work.**
+> SLATE is pivoting from PDF-canvas + page-level cues to HTML text rendering + line-level cues (In-Focus Reader, Free Read mode, character color palette). The sections below describe the pre-pivot v2.x architecture; they will be updated per Phase 8 of `V3_PLAN.md`. When in doubt, `V3_PLAN.md` is the source of truth.
+
 ## What this is
 SLATE is a web-based screenplay reader with synchronized audio playback. It is a personal creative tool — not a SaaS product. Think of it as a private screening room where you read a script while music plays underneath, synced to specific scenes.
 
