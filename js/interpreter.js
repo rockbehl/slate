@@ -334,6 +334,10 @@ const Interpreter = (() => {
                     const result = data.result;
                     if (typeof STATE !== 'undefined') STATE.interpreterData = result;
                     if (typeof CueEditor !== 'undefined') CueEditor.onInterpreterReady(result);
+                    // v3: re-render current page as HTML now that line data is available
+                    if (typeof TextRenderer !== 'undefined' && typeof STATE !== 'undefined') {
+                        TextRenderer.renderPage(STATE.currentPage || 1);
+                    }
                     if (!result.error && result.scenes.length === 0) {
                         console.warn('SLATE Interpreter: 0 scenes found — run Interpreter.diagnoseRaw(1) in console');
                     }
@@ -397,6 +401,10 @@ const Interpreter = (() => {
         if (parsed.scenes.length === 0) { console.warn('SLATE Interpreter: 0 scenes — run diagnoseRaw(1)'); diagnoseRaw(1); }
         if (typeof STATE !== 'undefined') STATE.interpreterData = result;
         if (typeof CueEditor !== 'undefined') CueEditor.onInterpreterReady(result);
+        // v3: re-render current page as HTML now that line data is available
+        if (typeof TextRenderer !== 'undefined' && typeof STATE !== 'undefined') {
+            TextRenderer.renderPage(STATE.currentPage || 1);
+        }
         return result;
     }
 

@@ -76,6 +76,10 @@ button {
     padding: 52px 66px 64px;
     position: relative;
     box-shadow: var(--shadow-page);
+    /* v3: match canvas width cap so HTML and canvas renders look identical */
+    width: 100%;
+    max-width: 600px;
+    box-sizing: border-box;
 }
 
 /* Page number in top-right corner */
