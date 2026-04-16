@@ -98,7 +98,7 @@ Backward compatible: every existing cue without `line` → treated as `{line: 0,
 
 ## Phase checklist
 
-- [ ] **Phase 1** — Line data pipeline 🔵
+- [x] **Phase 1** — Line data pipeline 🟢
 - [ ] **Phase 2** — HTML text renderer 🔵
 - [ ] **Phase 3** — Cue schema extension 🔵
 - [ ] **Phase 4** — Playback engine update 🔵
@@ -274,3 +274,4 @@ STATE.selectedLineId   // 'p{page}_l{idx}' | null — Compose only, click-to-sel
 Add one line here every time a phase ships or a decision changes. Format: `YYYY-MM-DD — [PhaseX] what shipped / decided`.
 
 - 2026-04-16 — Plan drafted after conversation with musician. Decisions locked: HTML primary, In-Focus Reader for Screen, click-to-select + `C` for authoring, adaptive scroll with user cap, canvas behind `?canvas=1`.
+- 2026-04-16 — Phase 1 complete. `interpreter.js` + `interpreter-worker.js`: `CACHE_VERSION` → 5, `_parse()` now persists full line array in `pages{}`, added `getLinesForPage(n)` + `diagnoseLines(n)` to public API.
