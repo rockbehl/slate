@@ -162,7 +162,9 @@ function goToPage(pageNum) {
         STATE._lastSceneId = null;
     }
 
-    PDFEngine.renderPage(n);
+    // v3: HTML renderer is primary; canvas is fallback (?canvas=1) or pre-interpreter
+    if (typeof TextRenderer !== 'undefined') TextRenderer.renderPage(n);
+    else PDFEngine.renderPage(n);
     Waveform.highlightPin(n);
     Comments.syncIndicator();
     if (STATE.mode === 'reel') ReelEngine.highlightCard(
