@@ -21,3 +21,6 @@ assets/screenplay/*.pdf
 *.swp
 *.swo
 Thumbs.db
+
+# Dev assets — local test files, never commit
+_dev_assets/
