@@ -11,6 +11,8 @@
      Interpreter.getCache(url)          → retrieve cached result (Promise<result|null>)
      Interpreter.clearCache(url)        → clear one entry
      Interpreter.clearAll()             → nuke entire cache
+     Interpreter.getLinesForPage(n)     → [{ id, text, type, x, y, char? }] for page n
+     Interpreter.diagnoseLines(n)       → console: all parsed lines for page n with ids
 
    CALLED FROM:
      pdf-engine.js → after first page renders
@@ -22,6 +24,7 @@
        characters[]   — sorted array of character names
        transitions[]  — { page, text }
        pageMap{}      — { [pageNum]: { sceneId, characters[] } }
+       pages{}        — { [pageNum]: { lines: [{ id, text, type, x, y, char? }] } }
        suggestedCues[]— one per scene, track:"", at:0 — ready to import
      }
 ───────────────────────────────────────────────── */
@@ -33,7 +36,7 @@ const Interpreter = (() => {
     const DB_NAME      = 'slate_interpreter';
     const DB_VERSION   = 1;
     const STORE_NAME   = 'results';
-    const CACHE_VERSION = 4;   // bump when parse logic changes to auto-invalidate stale results
+    const CACHE_VERSION = 5;   // bump when parse logic changes to auto-invalidate stale results
 
     /* ─────────────────────────────────────────
        X-POSITION THRESHOLDS (PDF points, 72pt = 1")
@@ -199,6 +202,7 @@ const Interpreter = (() => {
         const charSet     = new Set();
         const transitions = [];
         const pageMap     = {};
+        const pages       = {};   // v3: full classified line array per page
 
         let sceneIdx     = 0;
         let currentScene = null;
@@ -206,9 +210,24 @@ const Interpreter = (() => {
         for (const { pageNum, lines } of pageLines) {
             const pageChars = new Set();
             pageMap[pageNum] = { sceneId: null, characters: [] };
+            pages[pageNum]   = { lines: [] };
 
             for (const line of lines) {
-                const type = _classify(line);
+                const type    = _classify(line);
+
+                // v3: persist every classified line with a stable composite ID
+                const lineObj = {
+                    id:   `p${pageNum}_l${pages[pageNum].lines.length}`,
+                    text: line.text,
+                    type,
+                    x:    line.x,
+                    y:    line.y,
+                };
+                if (type === 'character') {
+                    const cName = line.text.trim().replace(VOICE_RE, '').trim();
+                    if (cName.length >= 2 && cName.length <= 45) lineObj.char = cName;
+                }
+                pages[pageNum].lines.push(lineObj);
 
                 if (type === 'scene') {
                     const heading  = line.text.trim();
@@ -269,6 +288,7 @@ const Interpreter = (() => {
             characters:    [...charSet].sort(),
             transitions,
             pageMap,
+            pages,
             suggestedCues,
         };
     }
@@ -462,11 +482,43 @@ const Interpreter = (() => {
         console.groupEnd();
     }
 
+    /* ─────────────────────────────────────────
+       LINE ACCESSOR — v3 line-aware architecture
+    ───────────────────────────────────────── */
+
+    // getLinesForPage(n) — returns the parsed line array for page n from the cached result.
+    // Each line: { id, text, type, x, y, char? }
+    // Returns [] if interpreter hasn't run yet or page n has no data.
+    function getLinesForPage(n) {
+        const d = (typeof STATE !== 'undefined') ? STATE.interpreterData : null;
+        return d?.pages?.[n]?.lines ?? [];
+    }
+
+    // diagnoseLines(n) — print all parsed+classified lines for page n from the cache.
+    // Companion to diagnoseRaw(): diagnoseRaw re-extracts from the PDF live;
+    // diagnoseLines reads from the already-parsed cache (instant, no PDF re-read).
+    function diagnoseLines(n) {
+        n = n || 1;
+        const lines = getLinesForPage(n);
+        if (!lines.length) {
+            console.warn(`Interpreter.diagnoseLines(${n}): no data — load a PDF and wait for analysis`);
+            return;
+        }
+        console.group(`SLATE Interpreter — parsed lines page ${n} (${lines.length} lines)`);
+        lines.forEach(l => {
+            const tStr = l.type.padEnd(14);
+            const text = l.text.length > 80 ? l.text.slice(0, 77) + '…' : l.text;
+            const char = l.char ? `  char="${l.char}"` : '';
+            console.log(`[${tStr}] id=${l.id}${char}  "${text}"`);
+        });
+        console.groupEnd();
+    }
+
     // Expose internals when running under the test harness — never in normal use
     const _testAPI = (typeof module !== 'undefined' || (typeof __SLATE_TEST__ !== 'undefined' && __SLATE_TEST__))
         ? { _classify, _itemsToLines, _joinItems, _cacheKey, X, SCENE_RE, TRANSITION_RE, CHAR_BLACKLIST }
         : null;
 
-    return { analyze, getCache, clearCache, clearAll, diagnose, diagnoseRaw, _testAPI };
+    return { analyze, getCache, clearCache, clearAll, diagnose, diagnoseRaw, getLinesForPage, diagnoseLines, _testAPI };
 
 })();

@@ -24,7 +24,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
 const DB_NAME      = 'slate_interpreter';
 const DB_VERSION   = 1;
 const STORE_NAME   = 'results';
-const CACHE_VERSION = 4;
+const CACHE_VERSION = 5;
 
 const X = {
     SCENE_LEFT_MIN:   55,
@@ -158,6 +158,7 @@ function _parse(pageLines) {
     const charSet     = new Set();
     const transitions = [];
     const pageMap     = {};
+    const pages       = {};   // v3: full classified line array per page
 
     let sceneIdx     = 0;
     let currentScene = null;
@@ -165,9 +166,24 @@ function _parse(pageLines) {
     for (const { pageNum, lines } of pageLines) {
         const pageChars = new Set();
         pageMap[pageNum] = { sceneId: null, characters: [] };
+        pages[pageNum]   = { lines: [] };
 
         for (const line of lines) {
-            const type = _classify(line);
+            const type    = _classify(line);
+
+            // v3: persist every classified line with a stable composite ID
+            const lineObj = {
+                id:   `p${pageNum}_l${pages[pageNum].lines.length}`,
+                text: line.text,
+                type,
+                x:    line.x,
+                y:    line.y,
+            };
+            if (type === 'character') {
+                const cName = line.text.trim().replace(VOICE_RE, '').trim();
+                if (cName.length >= 2 && cName.length <= 45) lineObj.char = cName;
+            }
+            pages[pageNum].lines.push(lineObj);
 
             if (type === 'scene') {
                 const heading  = line.text.trim();
@@ -220,7 +236,7 @@ function _parse(pageLines) {
         note:    'Auto-generated — assign a track to activate',
     }));
 
-    return { scenes, characters: [...charSet].sort(), transitions, pageMap, suggestedCues };
+    return { scenes, characters: [...charSet].sort(), transitions, pageMap, pages, suggestedCues };
 }
 
 /* ─────────────────────────────────────────
