@@ -192,7 +192,7 @@ const AudioEngine = (() => {
     function _checkCues(seek) {
         for (let i = 0; i < _cues.length; i++) {
             const cue   = _cues[i];
-            const cueId = cue.track || _defaultId;
+            const cueId = (cue.track && _sounds[cue.track]) ? cue.track : _defaultId;
 
             if (
                 cueId === _currentId &&
@@ -223,7 +223,7 @@ const AudioEngine = (() => {
 
     function _idForPage(pageNum) {
         const cue = _cueForPage(pageNum);
-        if (cue && cue.track) return cue.track;
+        if (cue && cue.track && _sounds[cue.track]) return cue.track;
         return _defaultId;
     }
 
