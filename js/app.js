@@ -90,6 +90,11 @@ function loadCues() {
             STATE.cues   = data.cues   || [];
             STATE.scenes = data.scenes || [];
 
+            // v3 Phase 3: ensure line/lineSpecific defaults before any consumer reads them
+            if (typeof CueEditor !== 'undefined' && CueEditor.migrateCues) {
+                CueEditor.migrateCues(STATE.cues);
+            }
+
             // Await AudioEngine so STATE.tracks is populated before Waveform.init()
             // Catch separately so an AudioEngine failure doesn't swallow the cues error path
             await AudioEngine.init(STATE.cues, PATHS.tracks).catch(e => console.warn('SLATE AudioEngine init error:', e));

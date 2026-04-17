@@ -117,6 +117,10 @@ const BundleLoader = (() => {
                 if (cuesJson) {
                     STATE.cues   = cuesJson.cues   || [];
                     STATE.scenes = cuesJson.scenes || [];
+                    // v3 Phase 3: apply line/lineSpecific defaults to bundled cues
+                    if (typeof CueEditor !== 'undefined' && CueEditor.migrateCues) {
+                        CueEditor.migrateCues(STATE.cues);
+                    }
                 }
                 STATE.tracks = patchedTracks;
                 // Store manifest for export round-trips

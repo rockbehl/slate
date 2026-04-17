@@ -27,66 +27,31 @@ See `css/tokens.css` for all design tokens.
 
 ---
 
-## Current build phase: Phase 1 → Phase 2
+## Current build phase: v3.0.0 — Line-Aware Architecture
 
-### ✅ Done (design/mockup phase)
-- Design language locked (Palette A: Film Archive)
-- Mockup v3 completed — see `mockup-v3.html` in the parent directory
-- Project scaffolded — this is where you are now
+v3 is an architectural pivot from PDF-canvas (page-level cues) to HTML text rendering (line-level cues). See `V3_PLAN.md` for the full specification.
 
-### 🔨 Phase 1 — Core Shell (START HERE)
-Goal: Load the real screenplay PDF and render it page-by-page in Screen mode.
+### Phase Status (per V3_PLAN.md checklist)
 
-**Tasks:**
-1. Integrate **PDF.js** (CDN: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js`)
-2. Replace the dummy HTML screenplay content in `index.html` with a PDF canvas renderer
-3. The PDF should live at `assets/screenplay/screenplay.pdf`
-4. Page navigation (arrow keys, on-screen nav buttons) advances the canvas
-5. The screenplay canvas should be scrollable within the `.screen-scroll` container
-6. Match the existing visual style: cream page, centered, drop shadow, page number in corner
-7. Screen mode should be fullscreen-ready (no layout breaks)
+- **Phase 1: Line Data Pipeline** 🟢 DONE
+  - `js/interpreter.js` + `js/interpreter-worker.js` now persist full line array in `pages[n].lines`
+  - Line structure: `{ id: 'p{page}_l{idx}', text, type, x, y, char? }`
+  - Types: `scene | character | dialog | parenthetical | action | transition`
+  - New API: `Interpreter.getLinesForPage(n)`, `Interpreter.diagnoseLines(n)`
+  - `CACHE_VERSION` → 5
 
-**Key file:** `js/pdf-engine.js` — all PDF.js logic goes here. See stubs.
+- **Phase 2: HTML Text Renderer** 🟢 DONE
+  - New `js/text-renderer.js` renders page lines as DOM using existing `.sp-*` CSS classes
+  - Canvas fallback: `?canvas=1` URL param or when interpreter not ready
+  - `goToPage()` in `js/app.js` now calls `TextRenderer.renderPage(n)` as primary path
+  - Interpreter re-renders current page when analysis completes
 
-### 🔜 Phase 2 — Audio Engine
-Goal: Real audio playback with cue-point syncing.
+- **Phase 3: Cue Schema Extension** 🔵 IN PROGRESS
+  - Add `line: number` and `lineSpecific: boolean` to each cue
+  - Migration on load: missing fields default to `{line: 0, lineSpecific: false}` (page-level)
+  - **File:** `js/cue-editor.js` line 28; `cues.json` schema updated below
 
-**Tasks:**
-1. Integrate **Howler.js** (CDN: `https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js`)
-2. Load audio files from `assets/audio/`
-3. Wire the floating audio bar (play/pause, scrub, volume) to real playback
-4. Implement the cue engine: read `cues.json`, fire page-advance events when timestamps hit
-5. "Now playing" whisper fades in when a new cue starts
-6. Auto-advance is optional (toggleable)
-
-**Key file:** `js/audio-engine.js` — all Howler.js logic goes here. See stubs.
-
-### 🔜 Phase 3 — Compose Mode
-Goal: Split-pane workspace with real waveform, editable cue table, notes.
-
-**Tasks:**
-1. Integrate **Wavesurfer.js** (CDN: `https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/7.8.2/wavesurfer.min.js`)
-2. Render the real audio waveform in `.wave-box`
-3. Page marker pins on the waveform at each cue point
-4. Scene colour bands behind the waveform (defined in `cues.json` → `scenes[]`)
-5. Clicking the waveform scrubs both audio and page position
-6. Cue table rows are editable inline (click a note field to edit)
-7. "Add Cue" button opens an inline form: page number, track, timestamp, note
-8. Changes save to `cues.json` (or localStorage as a fallback)
-
-**Key file:** `js/waveform.js` and `js/cue-editor.js` — see stubs.
-
-### 🔜 Phase 4 — Polish
-- Mode transition animations (panels slide/crossfade)
-- Fullscreen mode (`F` key)
-- Export cues as JSON download
-- Error states (missing PDF, missing audio)
-- Loading state while PDF.js initialises
-
-### 🔜 Phase 5 — Reel Foundation
-- `reel/prep-reel.js` preprocesses the PDF into structured scene JSON
-- One-time script, run manually
-- Output: `reel/reel-data.json`
+- **Phase 4–8:** See `V3_PLAN.md` for full phase breakdown (Playback engine, Line cue authoring, In-Focus Reader, Character palette, Documentation alignment)
 
 ---
 
@@ -95,23 +60,27 @@ Goal: Split-pane workspace with real waveform, editable cue table, notes.
 ```
 slate/
 ├── CLAUDE.md               ← YOU ARE HERE
+├── V3_PLAN.md              ← Source of truth for v3 phases + decisions
 ├── index.html              ← Entry point, all mode shells
-├── cues.json               ← The brain: page↔audio mappings + scene data
+├── cues.json               ← Page + line level cues + scene definitions
 │
 ├── css/
 │   ├── tokens.css          ← Design tokens (colours, spacing, fonts)
-│   ├── base.css            ← Reset, body, typography, screenplay page
+│   ├── base.css            ← Reset, body, typography, screenplay page, .sp-* classes
 │   ├── components.css      ← Shared UI (buttons, badges, nav)
 │   ├── audio-bar.css       ← Floating player pill
 │   ├── screen.css          ← Screen mode layout
 │   └── compose.css         ← Compose mode layout (panels, waveform, cue table)
 │
 ├── js/
-│   ├── app.js              ← State, mode switching, keyboard shortcuts
-│   ├── pdf-engine.js       ← PDF.js wrapper — Phase 1
-│   ├── audio-engine.js     ← Howler.js + cue system — Phase 2
-│   ├── waveform.js         ← Wavesurfer.js — Phase 3
-│   └── cue-editor.js       ← Cue add/edit/delete/notes — Phase 3
+│   ├── app.js              ← STATE, mode switching, keyboard shortcuts
+│   ├── pdf-engine.js       ← PDF.js wrapper + canvas fallback
+│   ├── interpreter.js      ← Screenplay parser: scenes, characters, lines (Web Worker)
+│   ├── interpreter-worker.js ← Offthread parse pipeline
+│   ├── text-renderer.js    ← HTML DOM renderer (primary, Phase 2)
+│   ├── audio-engine.js     ← Howler.js playback + cue polling
+│   ├── waveform.js         ← Wavesurfer.js visualization
+│   └── cue-editor.js       ← Cue CRUD, inline editing, localStorage save
 │
 ├── assets/
 │   ├── screenplay/
@@ -120,7 +89,7 @@ slate/
 │       └── (mp3/wav files) ← DROP AUDIO HERE
 │
 └── reel/
-    └── prep-reel.js        ← Phase 5 preprocessing script (stub)
+    └── prep-reel.js        ← Phase 5 preprocessing: outputs reel-data.json
 ```
 
 ---
@@ -149,20 +118,33 @@ python3 -m http.server 8000
 
 ```js
 const STATE = {
-    mode:       'screen',   // 'screen' | 'compose'
-    currentPage: 1,         // 1-indexed
-    totalPages:  92,        // set by pdf-engine after load
-    playing:     false,
-    progress:    0,         // 0–100
-    currentCue:  null,      // index into cues.json
-    cues:        [],        // loaded from cues.json
-    scenes:      [],        // loaded from cues.json
+    // Core
+    mode:           'screen',   // 'screen' | 'compose'
+    currentPage:    1,          // 1-indexed
+    totalPages:     92,         // set by pdf-engine after load
+    
+    // Audio
+    playing:        false,
+    progress:       0,          // 0–100
+    currentCue:     null,       // index into cues.json
+    
+    // Data
+    cues:           [],         // loaded from cues.json (now with line + lineSpecific)
+    scenes:         [],         // loaded from cues.json
+    interpreterData: null,      // { scenes, characters, pages: {n: {lines: [...]}}, ... }
+    
+    // v3 (Phase 3+)
+    freeRead:       false,      // toggle: 'Free Read' mode vs. synced playback
+    currentLine:    null,       // { page, lineIdx } | null — line in focus
+    focusedLineId:  null,       // 'p{page}_l{idx}' — for scroll targeting
+    autoScrollCap:  100,        // px/sec, user-settable
+    selectedLineId: null,       // Compose only; click-to-select for authoring
 };
 ```
 
 ---
 
-## cues.json format
+## cues.json format (v3)
 
 ```json
 {
@@ -173,16 +155,23 @@ const STATE = {
   ],
   "cues": [
     {
-      "page":    1,
-      "track":   "arrival-of-the-birds.mp3",
-      "at":      0,
-      "fadeIn":  1.5,
-      "fadeOut": 2.0,
-      "note":    "Silence first. Piano enters slowly. Hold before title card."
+      "page":         1,
+      "line":         0,                  // v3: line index on this page (0 = page-level cue)
+      "lineSpecific": false,              // v3: true = fires only when line enters focus; false = fires on page entry
+      "track":        "arrival-of-the-birds.mp3",
+      "at":           0,
+      "fadeIn":       1.5,
+      "fadeOut":      2.0,
+      "note":         "Silence first. Piano enters slowly. Hold before title card."
     }
   ]
 }
 ```
+
+**v3 cue behavior:**
+- `lineSpecific: true` → in Synced mode, fires when that line enters the focus lane; in Free Read, ignored
+- `lineSpecific: false` (or absent) → fires when user enters the page, regardless of mode
+- Migration: cues lacking `line`/`lineSpecific` get `{line: 0, lineSpecific: false}` on load
 
 ---
 

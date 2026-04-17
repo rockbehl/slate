@@ -1,10 +1,34 @@
 # SLATE — Feature Tracker
 
-Active work and upcoming items. Updated as features ship.
+Updated as features ship. See `V3_PLAN.md` for the full v3 roadmap and design decisions.
 
 ---
 
-## ✅ Shipped
+## 🚧 v3.0.0 — In Progress
+
+### Phases 1–2 ✅ Complete
+
+**Phase 1: Line Data Pipeline** — Interpreter now persists full line array in `pages[n].lines[]` with stable IDs, text, type, and coordinates. Added `getLinesForPage(n)` and `diagnoseLines(n)` public API. Cache version → 5.
+
+**Phase 2: HTML Text Renderer** — New `text-renderer.js` renders pages as DOM using existing `.sp-*` CSS classes. Canvas fallback via `?canvas=1` or when interpreter not ready. `goToPage()` now calls `TextRenderer.renderPage(n)` as primary.
+
+### Phases 3–8 🔵 Coming Soon
+
+**Phase 3: Cue Schema Extension** — Extend cues.json: add `line` + `lineSpecific` fields. Migration on load defaults to page-level cues.
+
+**Phase 4: Playback Engine Update** — Rework cue firing: respect Free Read toggle; line-specific cues skip in Free Read mode.
+
+**Phase 5: Line Cue Authoring GUI** — Click a line → `.sp-selected` highlight; press `C` → popover to set timestamp and create cue from that line.
+
+**Phase 6: In-Focus Reader + Free Read Toggle** — Screen mode becomes teleprompter with ~7-line focus lane at 40% viewport. Opacity gradient 1.0 → 0.85 → 0.55 → 0.25 → 0. Free Read toggle in audio bar. Adaptive auto-scroll rate (lines/sec, user-capped).
+
+**Phase 7: Character Color Palette** — Characters assigned stable colors from 12-color desaturated palette; inject CSS custom properties per char; only character names and cue lines colored, dialogue stays black.
+
+**Phase 8: Documentation Alignment** — Update CLAUDE.md, README, FEATURES, CHANGELOG, auditor spec, and memory files to reflect v3 architecture.
+
+---
+
+## ✅ v2.x Archive (canvas era)
 
 ### Core Shell — Phases 1–4
 - **PDF Engine** (`js/pdf-engine.js`) — PDF.js rendering, retina canvas, debounced resize, loading/error states

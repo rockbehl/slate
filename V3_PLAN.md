@@ -100,7 +100,7 @@ Backward compatible: every existing cue without `line` → treated as `{line: 0,
 
 - [x] **Phase 1** — Line data pipeline 🟢
 - [x] **Phase 2** — HTML text renderer 🟢
-- [ ] **Phase 3** — Cue schema extension 🔵
+- [x] **Phase 3** — Cue schema extension 🟢
 - [ ] **Phase 4** — Playback engine update 🔵
 - [ ] **Phase 5** — Line cue authoring GUI 🔵
 - [ ] **Phase 6** — In-Focus Reader + Free Read toggle + auto-scroll pacing 🔵
@@ -135,12 +135,14 @@ Foundation; no user-visible change.
 
 **Files:** new `js/text-renderer.js`, edits in `js/app.js`, `js/pdf-engine.js`, `index.html`
 
-### Phase 3 — Cue Schema Extension 🔵
-- Add `line: number` and `lineSpecific: boolean` to each cue.
-- One-shot migration on load: cues lacking fields get `{line: 0, lineSpecific: false}`.
-- Persist unchanged via `CueEditor.save()` → localStorage.
+### Phase 3 — Cue Schema Extension 🟢
+- Add `line: number` and `lineSpecific: boolean` to each cue. ✅
+- One-shot migration on load: cues lacking fields get `{line: 0, lineSpecific: false}`. ✅
+- Persist unchanged via `CueEditor.save()` → localStorage. ✅
 
-**Files:** `cues.json`, defaults in `js/cue-editor.js:28`
+**Shipped:** `CueEditor.migrateCues()` (idempotent) runs in three places — `CueEditor.init()` after localStorage restore, `CueEditor.suggestCues()` for interpreter stubs, and `loadCues()` / `bundle-loader.js` for the cues.json + bundle paths. Alpine projection (`_buildAlpineCues`) now surfaces `_lineLabel` + `_isLineCue` for the upcoming table + waveform variants (Phase 5).
+
+**Files:** `js/cue-editor.js`, `js/app.js`, `js/bundle-loader.js`
 
 ### Phase 4 — Playback Engine Update 🔵
 Rework `_checkCues()` at `js/audio-engine.js:192`:
@@ -276,3 +278,4 @@ Add one line here every time a phase ships or a decision changes. Format: `YYYY-
 - 2026-04-16 — Plan drafted after conversation with musician. Decisions locked: HTML primary, In-Focus Reader for Screen, click-to-select + `C` for authoring, adaptive scroll with user cap, canvas behind `?canvas=1`.
 - 2026-04-16 — Phase 1 complete. `interpreter.js` + `interpreter-worker.js`: `CACHE_VERSION` → 5, `_parse()` now persists full line array in `pages{}`, added `getLinesForPage(n)` + `diagnoseLines(n)` to public API.
 - 2026-04-16 — Phase 2 complete. New `js/text-renderer.js`: HTML rendering using existing `.sp-*` CSS classes. Canvas fallback when interpreter not ready or `?canvas=1`. `goToPage()` now calls `TextRenderer.renderPage(n)`. Interpreter re-renders current page on analysis completion.
+- 2026-04-17 — Phase 3 complete (schema slice). `CueEditor.migrateCues(cues)` added — idempotent, fills `{line: 0, lineSpecific: false}` on any cue missing those fields. Wired into `CueEditor.init()`, `CueEditor.suggestCues()`, `loadCues()` (cues.json path), and `bundle-loader.js` (bundled .cues path). Alpine projection surfaces `_lineLabel` + `_isLineCue` for the upcoming table + waveform variants. Parallel docs sweep by `slate-spec-auditor` agent: CLAUDE.md, README.md, FEATURES.md, CHANGELOG.md, and memory files all aligned with v3 state.
