@@ -2,6 +2,46 @@
 
 ---
 
+## v3.0.0-alpha.1 — Phase 1: Line Data Pipeline
+*2026-04-16*
+
+### Added
+- **Line data persistence** — `js/interpreter.js` + `js/interpreter-worker.js` now parse and store full line array alongside scene/character extraction. Each line: `{ id: "p{page}_l{idx}", text, type, x, y, char? }`. Line types: `scene | character | dialog | parenthetical | action | transition`.
+- **New Interpreter API** — `getLinesForPage(n)` returns classified lines for a page; `diagnoseLines(n)` logs them to console for debugging.
+- **Cache version bump** — `CACHE_VERSION` → 5 to invalidate old v2 results.
+
+---
+
+## v3.0.0-alpha.2 — Phase 2: HTML Text Renderer
+*2026-04-16*
+
+### Added
+- **`js/text-renderer.js`** — New module renders screenplay pages as DOM using existing `.sp-scene`, `.sp-char`, `.sp-dialogue`, `.sp-paren`, `.sp-action`, `.sp-trans` CSS classes from `css/base.css`.
+- **TextRenderer.renderPage(n)** — becomes primary render path called from `goToPage()` in `js/app.js:145`.
+- **Canvas fallback** — `?canvas=1` URL parameter forces original PDF canvas rendering; also triggered if interpreter not ready.
+- **Interpreter auto-refresh** — when interpreter finishes analyzing, it calls `TextRenderer.renderPage(STATE.currentPage)` to update Screen mode mid-session.
+
+---
+
+## v3.0.0-alpha.3 — BugBash: Audio Retry + Error Surface
+*2026-04-16*
+
+### Fixed
+- **Howler retry spam** — `audio-engine.js` now calls `howl.unload()` on loader error to prevent indefinite retry loop.
+- **Error surfacing** — Missing audio files now display warning in waveform label and now-playing whisper: "⚠ missing: filename".
+
+---
+
+## v3.0.0-alpha.4 — Phase 3: Cue Schema Extension (incoming)
+*2026-04-16 (planned)*
+
+### To ship
+- **`line` + `lineSpecific` fields** — each cue gains line index and behavior toggle.
+- **Migration on load** — cues lacking these fields default to `{line: 0, lineSpecific: false}` (page-level, backward compatible).
+- **Persist via localStorage** — `CueEditor.save()` unchanged; schema migration is auto.
+
+---
+
 ## v2.0.0 — .cues Bundle Format + Phase 4 Complete + Alpine.js
 *2026-04-08*
 

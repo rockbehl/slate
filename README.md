@@ -1,6 +1,6 @@
-# SLATE · v2.3.0
+# SLATE · v3.0.0-alpha
 
-A private screening room for reading a screenplay while music plays underneath — synced to scenes, page by page.
+A private screening room for reading a screenplay while music plays underneath. Built with line-level cue awareness, HTML text rendering, and character color palettes.
 
 No frameworks. No build step. Drop in a PDF and an audio file, open a browser.
 
@@ -10,11 +10,11 @@ No frameworks. No build step. Drop in a PDF and an audio file, open a browser.
 
 SLATE has three modes:
 
-**Screen** — Full-focus reader. One page at a time, nothing else visible. Audio plays underneath. The background shifts color subtly as you cross scene boundaries. Press `→` / `←` to turn pages, `Space` to play/pause, `F` for fullscreen, `M` to leave a note.
+**Screen** (v3: In-Focus Reader) — Teleprompter-style focus lane showing ~7 lines with adaptive opacity gradient. As you read (or as audio drives), the focus line remains fixed and the page scrolls beneath. Character names are tinted, scene headings are dimmed. Free Read mode lets you pace yourself; Synced mode auto-scrolls with the music. Press `→`/`←` to turn pages, `↓`/`↑` to step lines, `Space` to play/pause, `F` for fullscreen.
 
-**Compose** — Split workspace. Screenplay on the left, waveform timeline + cue table + page notes on the right. Drag the divider. Click a cue row to jump to that page. Edit notes, track assignments, timestamps, fade-in, and fade-out inline. Export the cue list as JSON or as a portable `.cues` bundle.
+**Compose** — Split workspace. Screenplay on the left, waveform timeline + cue table + scene editor + page notes on the right. Drag the divider. Click a cue row to jump; edit notes, track assignments, timestamps, fade-in, and fade-out inline. Click a line in the screenplay to author a cue starting from that line, or press `C` to create. Export the cue list as JSON or as a portable `.cues` bundle.
 
-**Reel** — Bird's-eye scene overview. All scenes as cards showing page range, cue count, and character presence. Click a card to jump to that scene in Screen mode. Active card tracks your current page.
+**Reel** — Bird's-eye scene overview (v2.x feature, works with v3). All scenes as cards showing page range, cue count, and character presence. Click a card to jump to that scene in Screen mode. Active card tracks your current page.
 
 ---
 
@@ -112,10 +112,12 @@ project-name.cues  (ZIP)
 | Key | Action |
 |-----|--------|
 | `→` / `←` | Next / previous page |
+| `↓` / `↑` | (In-Focus Reader) Step down / up one line |
+| `PageDown` / `PageUp` | Jump to next / previous scene |
 | `Space` | Play / pause |
 | `[` / `]` | Previous / next cue |
 | `S` | Switch to Screen mode |
-| `C` | Switch to Compose mode |
+| `C` | Switch to Compose mode (or, while a line is selected, create a new cue from that line) |
 | `R` | Switch to Reel mode |
 | `F` | Toggle fullscreen |
 | `M` | Add a note to the current page |
@@ -138,7 +140,7 @@ project-name.cues  (ZIP)
 
 ---
 
-## Cue file reference
+## Cue file reference (v3)
 
 ```json
 {
@@ -153,13 +155,14 @@ project-name.cues  (ZIP)
   ],
   "cues": [
     {
-      "page":    12,
-      "scene":   "EXT. ROOFTOP — NIGHT",
-      "track":   "your-track-id",
-      "at":      94,
-      "fadeIn":  1.5,
-      "fadeOut": 2.0,
-      "note":    "Optional director note."
+      "page":         12,
+      "line":         0,
+      "lineSpecific": false,
+      "track":        "your-track-id",
+      "at":           94,
+      "fadeIn":       1.5,
+      "fadeOut":      2.0,
+      "note":         "Optional director note."
     }
   ]
 }
@@ -168,7 +171,8 @@ project-name.cues  (ZIP)
 | Field | Type | Description |
 |-------|------|-------------|
 | `page` | number | 1-indexed page number |
-| `scene` | string | Scene heading (display only) |
+| `line` | number | 0-indexed line within the page (0 = page-level) |
+| `lineSpecific` | boolean | True: fires when line enters focus (Synced) or on page entry (Free Read); False: fires on page entry only. Default false. |
 | `track` | string | ID from `tracks.json`. Empty string = silence |
 | `at` | number \| null | Timestamp in seconds. `null` = silence marker |
 | `fadeIn` | number | Fade-in duration in seconds |
@@ -176,6 +180,12 @@ project-name.cues  (ZIP)
 | `note` | string | Director/editor note, visible in cue table |
 
 ---
+
+## Rendering mode
+
+By default, SLATE renders screenplays as **HTML text** using the line data from the Interpreter. This enables line-level cue awareness, character color palettes, and the In-Focus Reader in Screen mode.
+
+For side-by-side comparison or if you prefer the original PDF canvas rendering, append `?canvas=1` to the URL to force canvas mode.
 
 ## Swapping assets without editing JS
 

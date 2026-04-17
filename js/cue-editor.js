@@ -40,9 +40,27 @@ const CueEditor = (() => {
             }
         }
 
+        // v3 Phase 3: schema migration — ensure every cue carries line + lineSpecific.
+        // Page-level cues (existing behavior) get {line: 0, lineSpecific: false}.
+        if (_migrateCues(STATE.cues)) save();
+
         _pendingSuggest = false;
         _prevActiveIdx  = null;
         render();
+    }
+
+    /* ─────────────────────────────────────────
+       v3 SCHEMA MIGRATION — line + lineSpecific
+       Idempotent. Returns true if any cue was modified.
+    ───────────────────────────────────────── */
+    function _migrateCues(cues) {
+        if (!Array.isArray(cues)) return false;
+        let changed = false;
+        for (const cue of cues) {
+            if (typeof cue.line !== 'number')         { cue.line = 0;             changed = true; }
+            if (typeof cue.lineSpecific !== 'boolean'){ cue.lineSpecific = false; changed = true; }
+        }
+        return changed;
     }
 
     /* ─────────────────────────────────────────
@@ -64,6 +82,9 @@ const CueEditor = (() => {
                 _timeLabel:   _formatTime(cue.at),
                 _fadeInLabel:  cue.fadeIn  != null ? cue.fadeIn  + 's' : '—',
                 _fadeOutLabel: cue.fadeOut != null ? cue.fadeOut + 's' : '—',
+                // v3 Phase 3: surface line targeting for table + waveform variants
+                _lineLabel:     cue.lineSpecific && typeof cue.line === 'number' ? `L${cue.line}` : '—',
+                _isLineCue:     !!cue.lineSpecific,
             };
         });
     }
@@ -485,6 +506,7 @@ const CueEditor = (() => {
 
         // Deep-copy so edits don't mutate interpreter data
         STATE.cues = suggested.map(c => ({ ...c }));
+        _migrateCues(STATE.cues);   // v3: page-level defaults on interpreter stubs
         STATE.currentCue = null;
         _prevActiveIdx = null;
         save();
@@ -694,6 +716,6 @@ const CueEditor = (() => {
         : null;
 
     /* Public API */
-    return { init, render, search, setActive, save, exportJSON, exportBundle, suggestCues, onInterpreterReady, toggleInterpPanel, _alpineDelete, _alpineEditNote, _alpineEdit, _testAPI };
+    return { init, render, search, setActive, save, exportJSON, exportBundle, suggestCues, onInterpreterReady, toggleInterpPanel, migrateCues: _migrateCues, _alpineDelete, _alpineEditNote, _alpineEdit, _testAPI };
 
 })();
