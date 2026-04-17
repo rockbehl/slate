@@ -76,7 +76,15 @@ const AudioEngine = (() => {
                     format:      [ext],
                     html5:       true,
                     volume:      0.85,
-                    onloaderror: (_, err) => console.warn(`SLATE: failed to load "${t.file}"`, err),
+                    onloaderror: (_, err) => {
+                        console.warn(`SLATE: failed to load "${t.file}"`, err);
+                        // Unload immediately to stop Howler/html5 retry spam
+                        if (_sounds[t.id]) _sounds[t.id].howl.unload();
+                        // Surface error in UI — waveform label + whisper
+                        const wfLabel = document.getElementById('waveform-track-label');
+                        if (wfLabel) wfLabel.textContent = `⚠ missing: ${t.file}`;
+                        if (typeof showNowPlaying === 'function') showNowPlaying(`⚠ ${t.file} not found`);
+                    },
                     onend:       ()       => _stopPoll(),  // B1: stop poll when track ends naturally
                 }),
                 meta: t,
