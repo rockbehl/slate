@@ -149,7 +149,17 @@ const Comments = (() => {
 
             const meta = document.createElement('div');
             meta.className = 'cm-meta';
-            meta.innerHTML = `<span class="cm-page">p.${c.page}</span>${c.at !== null ? `<span class="cm-at">${_fmtTime(c.at)}</span>` : ''}`;
+            // Build with DOM methods — avoids innerHTML with data-derived values
+            const pageSpan = document.createElement('span');
+            pageSpan.className   = 'cm-page';
+            pageSpan.textContent = `p.${c.page}`;
+            meta.appendChild(pageSpan);
+            if (c.at !== null) {
+                const atSpan = document.createElement('span');
+                atSpan.className   = 'cm-at';
+                atSpan.textContent = _fmtTime(c.at);
+                meta.appendChild(atSpan);
+            }
 
             const text = document.createElement('div');
             text.className = 'cm-text';

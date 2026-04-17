@@ -5,6 +5,9 @@ on:
       - main
   pull_request:
     types: [opened, synchronize, reopened]
+permissions:
+  contents: read    # minimum required; no write access granted to any scope
+
 jobs:
   sonarqube:
     name: SonarQube

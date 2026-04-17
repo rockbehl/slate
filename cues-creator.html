@@ -8,8 +8,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Geist+Mono:wght@300;400&display=swap" rel="stylesheet">
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"
+        integrity="sha512-q+4liFwdPC/bNdhUpZx6aXDx/h77yEQtn4I1slHydcbZK34nLaR3cAeYSJshoxIOq3mjEf7xJE8YWIUHMn+oCQ=="
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"
+        integrity="sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg=="
+        crossorigin="anonymous"></script>
 
 <style>
 /* ── Tokens ── */
@@ -788,7 +792,13 @@ async function loadPdf(file) {
     canvas.height = vp.height;
     await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
 
-    $('pdf-meta').innerHTML = `<strong>${file.name}</strong> · ${S.pdfPages} pages`;
+    // Use DOM methods — file.name is user-supplied and must not be set via innerHTML
+    const meta = $('pdf-meta');
+    meta.textContent = '';
+    const strong = document.createElement('strong');
+    strong.textContent = file.name;
+    meta.appendChild(strong);
+    meta.appendChild(document.createTextNode(` · ${S.pdfPages} pages`));
 
     // Seed default scenes if none
     if (!S.scenes.length) seedDefaultScenes();
